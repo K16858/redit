@@ -5,7 +5,7 @@ pub struct Editor {}
 
 impl Editor {
     pub fn default() -> Self {
-        Editor
+        Editor {}
     }
 
     pub fn run(&self) {
