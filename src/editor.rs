@@ -50,6 +50,14 @@ impl Editor {
         }
     }
 
+    fn refresh_screen(&self) -> Result<(), std::io::Error> {
+        if self.should_quit {
+            Self::clear_screen()?;
+            println!("bye. \r\n");
+        }
+        Ok(())
+    }
+
     fn repl(&mut self) -> Result<(), std::io::Error> {
         enable_raw_mode()?;
         loop {
