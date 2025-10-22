@@ -19,6 +19,11 @@ impl Editor {
         println!("bye.\r\n");
     }
 
+    fn initialize() -> Result<(), std::io::Error> {
+        enable_raw_mode()?;
+        Self::clear_screen()
+    }
+
     fn terminate() -> Result<(), std::io::Error> {
         disable_raw_mode()
     }
