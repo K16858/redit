@@ -1,11 +1,13 @@
 use crossterm::event::{Event::Key, KeyCode::Char, KeyEvent, KeyModifiers, read};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
-pub struct Editor {}
+pub struct Editor {
+    should_quit: bool,
+}
 
 impl Editor {
     pub fn default() -> Self {
-        Editor {}
+        Editor { should_quit: false }
     }
 
     pub fn run(&self) {
