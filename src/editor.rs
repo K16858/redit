@@ -19,6 +19,11 @@ impl Editor {
         println!("bye.\r\n");
     }
 
+    fn clear_screen() -> Result<(), std::io::Error> {
+        let mut stdout = stdout();
+        execute!(stdout, Clear(ClearType::All))
+    }
+
     fn repl(&mut self) -> Result<(), std::io::Error> {
         enable_raw_mode()?;
         loop {
