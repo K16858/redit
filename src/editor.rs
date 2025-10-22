@@ -33,6 +33,23 @@ impl Editor {
         execute!(stdout, Clear(ClearType::All))
     }
 
+    fn evaluate_event(&mut self, event: &Event) {
+        if let Key(KeyEvent {
+            code,
+            modifiers,
+            kind,
+            state,
+        }) = event
+        {
+            match code {
+                Char('q') if *modifiers == KeyModifiers::CONTROL => {
+                    self.should_quit = true;
+                }
+                _ => (),
+            }
+        }
+    }
+
     fn repl(&mut self) -> Result<(), std::io::Error> {
         enable_raw_mode()?;
         loop {
