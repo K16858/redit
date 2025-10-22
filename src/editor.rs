@@ -35,10 +35,7 @@ impl Editor {
 
     fn evaluate_event(&mut self, event: &Event) {
         if let Key(KeyEvent {
-            code,
-            modifiers,
-            kind,
-            state,
+            code, modifiers, ..
         }) = event
         {
             match code {
@@ -67,6 +64,6 @@ impl Editor {
                 break;
             }
         }
-        return Ok(());
+        Ok(())
     }
 }
