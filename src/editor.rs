@@ -10,23 +10,35 @@ impl Editor {
         Editor { should_quit: false }
     }
 
-    pub fn run(&self) {
+    pub fn run(&mut self) {
         if let Err(err) = self.repl() {
             panic!("{err:#?}");
         }
         println!("bye.\r\n");
     }
 
-    fn repl(&self) -> Result<(), std::io::Error> {
+    fn repl(&mut self) -> Result<(), std::io::Error> {
         enable_raw_mode()?;
         loop {
-            if let Key(event) = read()? {
-                println!("{event:?} \r");
-                if let Char(c) = event.code {
-                    if c == 'q' {
-                        break;
+            if let Key(KeyEvent {
+                code,
+                modifiers,
+                kind,
+                state,
+            }) = read()?
+            {
+                println!(
+                    "Code: {code:?} Modifiers: {modifiers:?} Kind: {kind:?} State: {state:?} \r"
+                );
+                match code {
+                    Char('q') if modifiers == KeyModifiers::CONTROL => {
+                        self.should_quit = true;
                     }
+                    _ => (),
                 }
+            }
+            if self.should_quit {
+                break;
             }
         }
         disable_raw_mode()?;
