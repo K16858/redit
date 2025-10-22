@@ -13,10 +13,10 @@ impl Editor {
     }
 
     pub fn run(&mut self) {
-        if let Err(err) = self.repl() {
-            panic!("{err:#?}");
-        }
-        println!("bye.\r\n");
+        Self::initialize().unwrap();
+        let result = self.repl();
+        Self::terminate().unwrap();
+        result.unwrap();
     }
 
     fn initialize() -> Result<(), std::io::Error> {
@@ -59,30 +59,14 @@ impl Editor {
     }
 
     fn repl(&mut self) -> Result<(), std::io::Error> {
-        enable_raw_mode()?;
         loop {
-            if let Key(KeyEvent {
-                code,
-                modifiers,
-                kind,
-                state,
-            }) = read()?
-            {
-                println!(
-                    "Code: {code:?} Modifiers: {modifiers:?} Kind: {kind:?} State: {state:?} \r"
-                );
-                match code {
-                    Char('q') if modifiers == KeyModifiers::CONTROL => {
-                        self.should_quit = true;
-                    }
-                    _ => (),
-                }
-            }
+            let event = read()?;
+            self.evaluate_event(&event);
+            self.refresh_screen()?;
             if self.should_quit {
                 break;
             }
         }
-        disable_raw_mode()?;
         return Ok(());
     }
 }
