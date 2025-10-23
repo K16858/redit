@@ -21,7 +21,8 @@ impl Editor {
 
     fn initialize() -> Result<(), std::io::Error> {
         enable_raw_mode()?;
-        Self::clear_screen()
+        Self::clear_screen()?;
+        Self::draw_rows()
     }
 
     fn terminate() -> Result<(), std::io::Error> {
@@ -53,6 +54,19 @@ impl Editor {
             println!("bye. \r\n");
         }
         Ok(())
+    }
+
+    fn draw_rows() -> Result<(), std::io::Error> {
+        let ternimal_size = crossterm::terminal::size()?;
+        let rows_size = ternimal_size.1;
+        let mut counter = rows_size;
+        while counter > 0 {
+            print!("~\r\n");
+            counter -= 1;
+        }
+        let mut stdout = stdout();
+        execute!(stdout, crossterm::cursor::MoveTo(1, 0))?;
+        return Ok(());
     }
 
     fn repl(&mut self) -> Result<(), std::io::Error> {
