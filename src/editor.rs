@@ -66,7 +66,7 @@ impl Editor {
         }
         let mut stdout = stdout();
         execute!(stdout, crossterm::cursor::MoveTo(1, 0))?;
-        return Ok(());
+        Ok(())
     }
 
     fn repl(&mut self) -> Result<(), std::io::Error> {
