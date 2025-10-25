@@ -53,7 +53,6 @@ impl Editor {
             Terminal::clear_line()?;
             Terminal::print("~")?;
             if current_row + 1 < height {
-                print!("\r\n");
                 Terminal::print("\r\n")?;
             }
         }
