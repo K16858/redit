@@ -59,6 +59,18 @@ impl Editor {
         Ok(())
     }
 
+    fn draw_welcome_message() -> Result<(), Error> {
+        let mut welcome_message = format!("redit -- version 0.0.0");
+        let width = Terminal::size()?.width as usize;
+        let len = welcome_message.len();
+        let padding = (width - len) / 2;
+        let spaces = " ".repeat(padding - 1);
+        welcome_message = format!("~{spaces}{welcome_message}");
+        welcome_message.truncate(width);
+        Terminal::print(welcome_message)?;
+        Ok(())
+    }
+
     fn repl(&mut self) -> Result<(), Error> {
         loop {
             let event = read()?;
