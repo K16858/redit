@@ -61,8 +61,8 @@ impl Terminal {
     }
 
     pub fn size() -> Result<Size, Error> {
-        let (width, height) = size()?;
-        Ok(Size { height, width })
+        let (_width, height) = size()?;
+        Ok(Size { height, _width })
     }
 
     pub fn execute() -> Result<(), Error> {
