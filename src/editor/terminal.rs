@@ -7,7 +7,7 @@ use std::io::{Error, Write, stdout};
 #[derive(Copy, Clone)]
 pub struct Size {
     pub height: u16,
-    pub _width: u16,
+    pub width: u16,
 }
 #[derive(Copy, Clone)]
 pub struct Position {
@@ -61,8 +61,8 @@ impl Terminal {
     }
 
     pub fn size() -> Result<Size, Error> {
-        let (_width, height) = size()?;
-        Ok(Size { height, _width })
+        let (width, height) = size()?;
+        Ok(Size { height, width })
     }
 
     pub fn execute() -> Result<(), Error> {
