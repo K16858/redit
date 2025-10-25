@@ -7,7 +7,7 @@ use std::io::{Error, Write, stdout};
 #[derive(Copy, Clone)]
 pub struct Size {
     pub height: u16,
-    pub width: u16,
+    pub _width: u16,
 }
 #[derive(Copy, Clone)]
 pub struct Position {
