@@ -1,5 +1,6 @@
 use crossterm::event::{Event, Event::Key, KeyCode::Char, KeyEvent, KeyModifiers, read};
 mod terminal;
+use std::io::Error;
 use terminal::Terminal;
 
 pub struct Editor {
@@ -32,7 +33,7 @@ impl Editor {
         }
     }
 
-    fn refresh_screen(&self) -> Result<(), std::io::Error> {
+    fn refresh_screen(&self) -> Result<(), Error> {
         if self.should_quit {
             Terminal::clear_screen()?;
             println!("bye. \r\n");
@@ -42,7 +43,7 @@ impl Editor {
         Ok(())
     }
 
-    fn draw_rows() -> Result<(), std::io::Error> {
+    fn draw_rows() -> Result<(), Error> {
         let ternimal_size = Terminal::size()?;
         let rows_size = ternimal_size.1;
         let mut counter = rows_size;
@@ -54,7 +55,7 @@ impl Editor {
         Ok(())
     }
 
-    fn repl(&mut self) -> Result<(), std::io::Error> {
+    fn repl(&mut self) -> Result<(), Error> {
         loop {
             let event = read()?;
             self.evaluate_event(&event);
