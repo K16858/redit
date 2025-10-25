@@ -51,7 +51,11 @@ impl Editor {
         let Size { height, .. } = Terminal::size()?;
         for current_row in 0..height {
             Terminal::clear_line()?;
-            Terminal::print("~")?;
+            if current_row == height / 3 {
+                Self::draw_welcome_message()?;
+            } else {
+                Self::draw_empty_row()?;
+            }
             if current_row + 1 < height {
                 Terminal::print("\r\n")?;
             }
@@ -68,6 +72,11 @@ impl Editor {
         welcome_message = format!("~{spaces}{welcome_message}");
         welcome_message.truncate(width);
         Terminal::print(welcome_message)?;
+        Ok(())
+    }
+
+    fn draw_empty_row() -> Result<(), Error> {
+        Terminal::print("~")?;
         Ok(())
     }
 
