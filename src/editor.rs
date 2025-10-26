@@ -7,6 +7,9 @@ use crossterm::event::{
 use std::io::Error;
 use terminal::{Position, Size, Terminal};
 
+const NAME: &str = env!("CARGO_PKG_NAME");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[derive(Copy, Clone, Default)]
 struct Location {
     x: usize,
@@ -130,7 +133,7 @@ impl Editor {
     }
 
     fn draw_welcome_message() -> Result<(), Error> {
-        let mut welcome_message = format!("redit -- version 0.0.0");
+        let mut welcome_message = format!("{NAME} -- version {VERSION}");
         let width = Terminal::size()?.width as usize;
         let len = welcome_message.len();
         let padding = (width - len) / 2;
