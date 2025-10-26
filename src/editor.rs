@@ -41,25 +41,25 @@ impl Editor {
                 y = y.saturating_sub(1);
             }
             KeyCode::Down => {
-                y = min(height.saturating_sub(1) as usize, y.saturating_add(1));
+                y = min(height.saturating_sub(1), y.saturating_add(1));
             }
             KeyCode::Left => {
                 x = x.saturating_sub(1);
             }
             KeyCode::Right => {
-                x = min(width.saturating_sub(1) as usize, x.saturating_add(1));
+                x = min(width.saturating_sub(1), x.saturating_add(1));
             }
             KeyCode::PageUp => {
                 y = 0;
             }
             KeyCode::PageDown => {
-                y = height.saturating_sub(1) as usize;
+                y = height.saturating_sub(1);
             }
             KeyCode::Home => {
                 x = 0;
             }
             KeyCode::End => {
-                x = width.saturating_sub(1) as usize;
+                x = width.saturating_sub(1);
             }
             _ => (),
         }
@@ -149,7 +149,7 @@ impl Editor {
     fn repl(&mut self) -> Result<(), Error> {
         loop {
             let event = read()?;
-            self.evaluate_event(&event);
+            self.evaluate_event(&event)?;
             self.refresh_screen()?;
             if self.should_quit {
                 break;
