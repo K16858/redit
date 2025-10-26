@@ -1,4 +1,4 @@
-use super::terminal::{Size, Terminal};
+use super::terminal::{Position, Size, Terminal};
 mod buffer;
 use buffer::Buffer;
 use std::io::Error;
@@ -59,6 +59,13 @@ impl View {
 
     fn draw_empty_row() -> Result<(), Error> {
         Terminal::print("~")?;
+        Ok(())
+    }
+
+    fn render_line(at: usize, line_text: &str) -> Result<(), Error> {
+        Terminal::move_caret_to(Position { row: at, col: 0 })?;
+        Terminal::clear_line()?;
+        Terminal::print(line_text)?;
         Ok(())
     }
 
