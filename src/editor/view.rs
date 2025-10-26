@@ -19,7 +19,7 @@ impl View {
         Ok(())
     }
 
-    pub fn render_welcome_screen(&self) -> Result<(), Error> {
+    fn render_welcome_screen(&self) -> Result<(), Error> {
         let Size { height, .. } = Terminal::size()?;
         for current_row in 0..height {
             Terminal::clear_line()?;
@@ -31,6 +31,14 @@ impl View {
             if current_row + 1 < height {
                 Terminal::print("\r\n")?;
             }
+        }
+        Ok(())
+    }
+
+    fn render_buffer_screen(&self) -> Result<(), Error> {
+        for line in &self.buffer.lines {
+            Terminal::print(line)?;
+            Terminal::print("\r\n")?;
         }
         Ok(())
     }
