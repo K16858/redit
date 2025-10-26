@@ -12,8 +12,8 @@ pub struct Size {
 }
 #[derive(Copy, Clone, Default)]
 pub struct Position {
-    pub x: usize,
-    pub y: usize,
+    pub col: usize,
+    pub row: usize,
 }
 
 pub struct Terminal {}
