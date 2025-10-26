@@ -5,11 +5,15 @@ use terminal::{Position, Size, Terminal};
 
 pub struct Editor {
     should_quit: bool,
+    cursor_pos: Position,
 }
 
 impl Editor {
     pub fn default() -> Self {
-        Editor { should_quit: false }
+        Editor {
+            should_quit: false,
+            cursor_pos: (Position { x: 0, y: 0 }),
+        }
     }
 
     pub fn run(&mut self) {
