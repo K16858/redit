@@ -61,4 +61,10 @@ impl View {
         Terminal::print("~")?;
         Ok(())
     }
+
+    pub fn load(&mut self, file_name: &str) {
+        if let Ok(buffer) = Buffer::load(file_name) {
+            self.buffer = buffer;
+        }
+    }
 }
