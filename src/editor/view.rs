@@ -34,9 +34,12 @@ impl View {
     }
 
     fn render_buffer_screen(&self) -> Result<(), Error> {
-        for line in &self.buffer.lines {
+        for (i, line) in self.buffer.lines.iter().enumerate() {
+            Terminal::move_caret_to(Position {
+                col: 0,
+                row: i as usize,
+            })?;
             Terminal::print(line)?;
-            Terminal::print("\r\n")?;
         }
         Ok(())
     }
