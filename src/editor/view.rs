@@ -8,13 +8,15 @@ pub struct View;
 
 impl View {
     pub fn render() -> Result<(), Error> {
+        Terminal::clear_line()?;
+        Terminal::print("Hello, World!\r\n")?;
         Self::draw_rows()?;
         Ok(())
     }
 
     fn draw_rows() -> Result<(), Error> {
         let Size { height, .. } = Terminal::size()?;
-        for current_row in 0..height {
+        for current_row in 1..height {
             Terminal::clear_line()?;
             if current_row == height / 3 {
                 Self::draw_welcome_message()?;
