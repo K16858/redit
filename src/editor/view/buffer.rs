@@ -9,3 +9,9 @@ impl Default for Buffer {
         }
     }
 }
+
+impl Buffer {
+    pub fn is_empty(&self) -> bool {
+        self.lines.is_empty()
+    }
+}
