@@ -41,7 +41,10 @@ impl Terminal {
     }
 
     pub fn move_caret_to(position: Position) -> Result<(), Error> {
-        Self::queue_command(MoveTo(position.col as u16, position.row as u16))?;
+        Self::queue_command(MoveTo(
+            u16::try_from(position.col).unwrap_or(u16::MAX),
+            u16::try_from(position.row).unwrap_or(u16::MAX),
+        ))?;
         Ok(())
     }
 
