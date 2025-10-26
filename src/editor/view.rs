@@ -27,7 +27,7 @@ impl View {
             if current_row == height / 3 {
                 Self::draw_welcome_message(current_row)?;
             } else {
-                Self::render_line(current_row, "~")?;
+                Self::draw_empty_row(current_row)?;
             }
         }
         Ok(())
@@ -53,10 +53,10 @@ impl View {
         Ok(())
     }
 
-    // fn draw_empty_row() -> Result<(), Error> {
-    //     Terminal::print("~")?;
-    //     Ok(())
-    // }
+    fn draw_empty_row(at: usize) -> Result<(), Error> {
+        Self::render_line(at, "~")?;
+        Ok(())
+    }
 
     fn render_line(at: usize, line_text: &str) -> Result<(), Error> {
         Terminal::move_caret_to(Position { row: at, col: 0 })?;
