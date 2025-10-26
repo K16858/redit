@@ -49,15 +49,15 @@ impl Editor {
     }
 
     fn refresh_screen(&self) -> Result<(), Error> {
-        Terminal::hide_cursor()?;
+        Terminal::hide_caret()?;
         if self.should_quit {
             Terminal::clear_screen()?;
             Terminal::print("bye.\r\n")?;
         } else {
             Self::draw_rows()?;
-            Terminal::move_cursor_to(Position { x: 0, y: 0 })?;
+            Terminal::move_caret_to(Position { col: 0, row: 0 })?;
         }
-        Terminal::show_cursor()?;
+        Terminal::show_caret()?;
         Terminal::execute()?;
         Ok(())
     }

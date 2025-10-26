@@ -40,17 +40,17 @@ impl Terminal {
         Ok(())
     }
 
-    pub fn move_cursor_to(position: Position) -> Result<(), Error> {
-        Self::queue_command(MoveTo(position.x, position.y))?;
+    pub fn move_caret_to(position: Position) -> Result<(), Error> {
+        Self::queue_command(MoveTo(position.col as u16, position.row as u16))?;
         Ok(())
     }
 
-    pub fn hide_cursor() -> Result<(), Error> {
+    pub fn hide_caret() -> Result<(), Error> {
         Self::queue_command(Hide)?;
         Ok(())
     }
 
-    pub fn show_cursor() -> Result<(), Error> {
+    pub fn show_caret() -> Result<(), Error> {
         Self::queue_command(Show)?;
         Ok(())
     }
