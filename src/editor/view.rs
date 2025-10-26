@@ -15,6 +15,8 @@ impl View {
     pub fn render(&self) -> Result<(), Error> {
         if self.buffer.is_empty() {
             self.render_welcome_screen()?;
+        } else {
+            self.render_buffer_screen()?;
         }
         Ok(())
     }
