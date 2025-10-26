@@ -15,19 +15,14 @@ struct Location {
     y: usize,
 }
 
+#[derive(Default)]
 pub struct Editor {
     should_quit: bool,
     location: Location,
+    view: View,
 }
 
 impl Editor {
-    pub fn default() -> Self {
-        Editor {
-            should_quit: false,
-            location: (Location { x: 0, y: 0 }),
-        }
-    }
-
     pub fn run(&mut self) {
         Terminal::initialize().unwrap();
         let result = self.repl();
@@ -104,7 +99,7 @@ impl Editor {
             Terminal::clear_screen()?;
             Terminal::print("bye.\r\n")?;
         } else {
-            View::render()?;
+            self.view.render()?;
             Terminal::move_caret_to(Position {
                 col: self.location.x,
                 row: self.location.y,
