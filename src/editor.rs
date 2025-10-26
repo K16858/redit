@@ -1,5 +1,9 @@
-use crossterm::event::{Event, Event::Key, KeyCode::Char, KeyEvent, KeyModifiers, read};
 mod terminal;
+use core::cmp::min;
+use crossterm::event::{
+    Event::{self, Key},
+    KeyCode, KeyEvent, KeyEventKind, KeyModifiers, read,
+};
 use std::io::Error;
 use terminal::{Position, Size, Terminal};
 
