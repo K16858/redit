@@ -4,7 +4,7 @@ use crossterm::event::{
     Event::{self, Key},
     KeyCode, KeyEvent, KeyEventKind, KeyModifiers, read,
 };
-use std::io::Error;
+use std::{collections, io::Error};
 use terminal::{Position, Size, Terminal};
 mod view;
 use view::View;
@@ -24,6 +24,10 @@ pub struct Editor {
 
 impl Editor {
     pub fn run(&mut self) {
+        let args: Vec<String> = std::env::args().collect();
+        if let Some(filename) = args.get(1) {
+            self.view.load(filename);
+        }
         Terminal::initialize().unwrap();
         let result = self.repl();
         Terminal::terminate().unwrap();
