@@ -67,19 +67,32 @@ impl Editor {
         Ok(())
     }
 
-    fn evaluate_event(&mut self, event: &Event) {
+    fn evaluate_event(&mut self, event: &Event) -> Result<(), Error> {
         if let Key(KeyEvent {
-            code, modifiers, ..
+            code,
+            modifiers,
+            kind: KeyEventKind::Press,
+            ..
         }) = event
         {
             match code {
-                Char('q') if *modifiers == KeyModifiers::CONTROL => {
+                KeyCode::Char('q') if *modifiers == KeyModifiers::CONTROL => {
                     self.should_quit = true;
                 }
-
+                KeyCode::Up
+                | KeyCode::Down
+                | KeyCode::Left
+                | KeyCode::Right
+                | KeyCode::PageDown
+                | KeyCode::PageUp
+                | KeyCode::End
+                | KeyCode::Home => {
+                    self.move_point(*code)?;
+                }
                 _ => (),
             }
         }
+        Ok(())
     }
 
     fn refresh_screen(&self) -> Result<(), Error> {
