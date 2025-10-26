@@ -14,14 +14,14 @@ pub struct View {
 impl View {
     pub fn render(&self) -> Result<(), Error> {
         if self.buffer.is_empty() {
-            self.render_welcome_screen()?;
+            Self::render_welcome_screen()?;
         } else {
             self.render_buffer_screen()?;
         }
         Ok(())
     }
 
-    fn render_welcome_screen(&self) -> Result<(), Error> {
+    fn render_welcome_screen() -> Result<(), Error> {
         let Size { height, .. } = Terminal::size()?;
         for current_row in 0..height {
             Terminal::clear_line()?;
