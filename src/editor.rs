@@ -15,14 +15,14 @@ struct Location {
 
 pub struct Editor {
     should_quit: bool,
-    cursor_pos: Location,
+    location: Location,
 }
 
 impl Editor {
     pub fn default() -> Self {
         Editor {
             should_quit: false,
-            cursor_pos: (Location { x: 0, y: 0 }),
+            location: (Location { x: 0, y: 0 }),
         }
     }
 
