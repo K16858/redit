@@ -1,10 +1,14 @@
 use super::terminal::{Size, Terminal};
+mod buffer;
+use buffer::Buffer;
 use std::io::Error;
 
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub struct View;
+pub struct View {
+    buffer: Buffer,
+}
 
 impl View {
     pub fn render() -> Result<(), Error> {
