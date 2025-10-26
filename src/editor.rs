@@ -3,16 +3,22 @@ mod terminal;
 use std::io::Error;
 use terminal::{Position, Size, Terminal};
 
+#[derive(Copy, Clone, Default)]
+struct Location {
+    x: usize,
+    y: usize,
+}
+
 pub struct Editor {
     should_quit: bool,
-    cursor_pos: Position,
+    cursor_pos: Location,
 }
 
 impl Editor {
     pub fn default() -> Self {
         Editor {
             should_quit: false,
-            cursor_pos: (Position { x: 0, y: 0 }),
+            cursor_pos: (Location { x: 0, y: 0 }),
         }
     }
 
@@ -32,6 +38,7 @@ impl Editor {
                 Char('q') if *modifiers == KeyModifiers::CONTROL => {
                     self.should_quit = true;
                 }
+
                 _ => (),
             }
         }
