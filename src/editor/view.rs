@@ -9,6 +9,8 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[derive(Default)]
 pub struct View {
     buffer: Buffer,
+    needs_redraw: bool,
+    size: Size,
 }
 
 impl View {
