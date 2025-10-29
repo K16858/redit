@@ -23,8 +23,10 @@ impl View {
 
     fn render_welcome_screen() -> Result<(), Error> {
         let Size { height, .. } = Terminal::size()?;
+        let vertical_center = height / 3;
+
         for current_row in 0..height {
-            if current_row == height / 3 {
+            if current_row == vertical_center {
                 Self::draw_welcome_message(current_row)?;
             } else {
                 Self::draw_empty_row(current_row)?;
