@@ -36,12 +36,19 @@ impl View {
     }
 
     fn render_buffer_screen(&self) -> Result<(), Error> {
+        let Size { width, .. } = Terminal::size()?;
         for (i, line) in self.buffer.lines.iter().enumerate() {
+            let truncated_line = if line.len() >= width {
+                &line[0..width]
+            } else {
+                line
+            };
             Terminal::move_caret_to(Position {
                 col: 0,
                 row: i as usize,
             })?;
-            Terminal::print(line)?;
+            Terminal::clear_line()?;
+            Terminal::print(truncated_line)?;
         }
         Ok(())
     }
