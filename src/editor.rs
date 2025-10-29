@@ -69,7 +69,7 @@ impl Editor {
         Ok(())
     }
 
-    fn evaluate_event(&mut self, event: Event) -> Result<(), Error> {
+    fn evaluate_event(&mut self, event: &Event) -> Result<(), Error> {
         match event {
             Event::Key(KeyEvent {
                 code,
@@ -77,7 +77,7 @@ impl Editor {
                 modifiers,
                 ..
             }) => match (code, modifiers) {
-                (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
+                (KeyCode::Char('q'), &KeyModifiers::CONTROL) => {
                     self.should_quit = true;
                 }
                 (
@@ -91,13 +91,13 @@ impl Editor {
                     | KeyCode::Home,
                     _,
                 ) => {
-                    self.move_point(code)?;
+                    self.move_point(*code)?;
                 }
                 _ => {}
             },
             Event::Resize(width_u16, height_u16) => {
-                let height = height_u16 as usize;
-                let width = width_u16 as usize;
+                let height = *height_u16 as usize;
+                let width = *width_u16 as usize;
                 self.view.resize(Size { height, width });
             }
             _ => {}
@@ -126,7 +126,7 @@ impl Editor {
     fn repl(&mut self) -> Result<(), Error> {
         loop {
             let event = read()?;
-            self.evaluate_event(event)?;
+            self.evaluate_event(&event)?;
             self.refresh_screen()?;
             if self.should_quit {
                 break;

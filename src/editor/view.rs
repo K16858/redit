@@ -64,10 +64,7 @@ impl View {
             } else {
                 line
             };
-            Terminal::move_caret_to(Position {
-                col: 0,
-                row: i as usize,
-            })?;
+            Terminal::move_caret_to(Position { col: 0, row: i })?;
             Terminal::clear_line()?;
             Terminal::print(truncated_line)?;
         }
