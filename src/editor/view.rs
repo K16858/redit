@@ -28,12 +28,17 @@ impl View {
         self.needs_redraw = true;
     }
 
-    pub fn render(&self) -> Result<(), Error> {
+    pub fn render(&mut self) -> Result<(), Error> {
+        if !self.needs_redraw {
+            return Ok(());
+        }
+
         if self.buffer.is_empty() {
             Self::render_welcome_screen()?;
         } else {
             self.render_buffer_screen()?;
         }
+        self.needs_redraw = false;
         Ok(())
     }
 
@@ -96,6 +101,7 @@ impl View {
     pub fn load(&mut self, file_name: &str) {
         if let Ok(buffer) = Buffer::load(file_name) {
             self.buffer = buffer;
+            self.needs_redraw = true;
         }
     }
 }
