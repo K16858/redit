@@ -4,7 +4,7 @@ use crossterm::terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode, s
 use crossterm::{Command, queue};
 use std::io::{Error, Write, stdout};
 
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct Size {
     pub height: usize,
     pub width: usize,
