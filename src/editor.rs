@@ -1,7 +1,11 @@
 mod terminal;
 use core::cmp::min;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, read};
-use std::{env, io::Error};
+use std::{
+    env,
+    io::Error,
+    panic::{set_hook, take_hook},
+};
 use terminal::{Position, Size, Terminal};
 mod view;
 use view::View;
@@ -20,6 +24,25 @@ pub struct Editor {
 }
 
 impl Editor {
+    pub fn new() -> Result<Self, Error> {
+        let current_hook = take_hook();
+        set_hook(Box::new(move |panic_info| {
+            let _ = Terminal::terminate();
+            current_hook(panic_info);
+        }));
+        Terminal::initialize()?;
+        let mut view = View::default();
+        let args: Vec<String> = env::args().collect();
+        if let Some(file_name) = args.get(1) {
+            view.load(file_name);
+        }
+        Ok(Self {
+            should_quit: false,
+            location: Location::default(),
+            view,
+        })
+    }
+
     pub fn run(&mut self) {
         Terminal::initialize().unwrap();
         self.handle_args();
