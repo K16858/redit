@@ -47,7 +47,6 @@ impl Editor {
         Terminal::initialize().unwrap();
         self.handle_args();
         self.repl();
-        Terminal::terminate().unwrap();
     }
 
     fn handle_args(&mut self) {
@@ -164,8 +163,5 @@ impl Editor {
 impl Drop for Editor {
     fn drop(&mut self) {
         let _ = Terminal::terminate();
-        if self.should_quit {
-            let _ = Terminal::print("Goodbye.\r\n");
-        }
     }
 }
