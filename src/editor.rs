@@ -160,3 +160,12 @@ impl Editor {
         }
     }
 }
+
+impl Drop for Editor {
+    fn drop(&mut self) {
+        let _ = Terminal::terminate();
+        if self.should_quit {
+            let _ = Terminal::print("Goodbye.\r\n");
+        }
+    }
+}
