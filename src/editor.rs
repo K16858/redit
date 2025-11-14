@@ -46,9 +46,8 @@ impl Editor {
     pub fn run(&mut self) {
         Terminal::initialize().unwrap();
         self.handle_args();
-        let result = self.repl();
+        self.repl();
         Terminal::terminate().unwrap();
-        result.unwrap();
     }
 
     fn handle_args(&mut self) {
@@ -58,9 +57,9 @@ impl Editor {
         }
     }
 
-    fn move_point(&mut self, key_code: KeyCode) -> Result<(), Error> {
+    fn move_point(&mut self, key_code: KeyCode) {
         let Location { mut x, mut y } = self.location;
-        let Size { height, width } = Terminal::size()?;
+        let Size { height, width } = Terminal::size();
         match key_code {
             KeyCode::Up => {
                 y = y.saturating_sub(1);
@@ -89,10 +88,9 @@ impl Editor {
             _ => (),
         }
         self.location = Location { x, y };
-        Ok(())
     }
 
-    fn evaluate_event(&mut self, event: &Event) -> Result<(), Error> {
+    fn evaluate_event(&mut self, event: &Event) {
         match event {
             Event::Key(KeyEvent {
                 code,
@@ -114,7 +112,7 @@ impl Editor {
                     | KeyCode::Home,
                     _,
                 ) => {
-                    self.move_point(*code)?;
+                    self.move_point(*code);
                 }
                 _ => {}
             },
@@ -125,36 +123,40 @@ impl Editor {
             }
             _ => {}
         }
-        Ok(())
     }
 
-    fn refresh_screen(&mut self) -> Result<(), Error> {
-        Terminal::hide_caret()?;
-        Terminal::move_caret_to(Position::default())?;
+    fn refresh_screen(&mut self) {
+        let _ = Terminal::hide_caret();
+        let _ = Terminal::move_caret_to(Position::default());
         if self.should_quit {
-            Terminal::clear_screen()?;
-            Terminal::print("bye.\r\n")?;
+            let _ = Terminal::clear_screen();
+            let _ = Terminal::print("bye.\r\n");
         } else {
-            self.view.render()?;
-            Terminal::move_caret_to(Position {
+            let _ = self.view.render();
+            let _ = Terminal::move_caret_to(Position {
                 col: self.location.x,
                 row: self.location.y,
-            })?;
+            });
         }
-        Terminal::show_caret()?;
-        Terminal::execute()?;
-        Ok(())
+        let _ = Terminal::show_caret();
+        let _ = Terminal::execute();
     }
 
-    fn repl(&mut self) -> Result<(), Error> {
+    fn repl(&mut self) {
         loop {
-            let event = read()?;
-            self.evaluate_event(&event)?;
-            self.refresh_screen()?;
+            self.refresh_screen();
             if self.should_quit {
                 break;
             }
+            match read() {
+                Ok(event) => self.evaluate_event(&event),
+                Err(err) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        panic!("Could not read event: {err:?}");
+                    }
+                }
+            }
         }
-        Ok(())
     }
 }

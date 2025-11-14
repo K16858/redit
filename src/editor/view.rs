@@ -17,7 +17,7 @@ impl Default for View {
         Self {
             buffer: Buffer::default(),
             needs_redraw: true,
-            size: Terminal::size().unwrap_or_default(),
+            size: Terminal::size(),
         }
     }
 }
@@ -43,7 +43,7 @@ impl View {
     }
 
     fn render_welcome_screen() -> Result<(), Error> {
-        let Size { height, .. } = Terminal::size()?;
+        let Size { height, .. } = Terminal::size();
         let vertical_center = height / 3;
 
         for current_row in 0..height {
@@ -57,7 +57,7 @@ impl View {
     }
 
     fn render_buffer_screen(&self) -> Result<(), Error> {
-        let Size { width, .. } = Terminal::size()?;
+        let Size { width, .. } = Terminal::size();
         for (i, line) in self.buffer.lines.iter().enumerate() {
             let truncated_line = if line.len() >= width {
                 &line[0..width]
@@ -73,7 +73,7 @@ impl View {
 
     fn draw_welcome_message(at: usize) -> Result<(), Error> {
         let mut welcome_message = format!("{NAME} -- version {VERSION}");
-        let width = Terminal::size()?.width;
+        let width = Terminal::size().width;
         let len = welcome_message.len();
         let padding = (width - len) / 2;
         let spaces = " ".repeat(padding - 1);

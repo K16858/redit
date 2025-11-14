@@ -63,13 +63,23 @@ impl Terminal {
         Ok(())
     }
 
-    pub fn size() -> Result<Size, Error> {
-        let (width_u16, height_u16) = size()?;
-        #[allow(clippy::as_conversions)]
-        let height = height_u16 as usize;
-        #[allow(clippy::as_conversions)]
-        let width = width_u16 as usize;
-        Ok(Size { height, width })
+    pub fn size() -> Size {
+        match size() {
+            Ok(size) => {
+                let (width_u16, height_u16) = size;
+                #[allow(clippy::as_conversions)]
+                let height = height_u16 as usize;
+                #[allow(clippy::as_conversions)]
+                let width = width_u16 as usize;
+                Size { height, width }
+            }
+            Err(err) => {
+                #[cfg(debug_assertions)]
+                {
+                    panic!("Could not read console size: {err:?}");
+                }
+            }
+        }
     }
 
     pub fn execute() -> Result<(), Error> {
