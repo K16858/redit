@@ -1,6 +1,9 @@
 use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::style::Print;
-use crossterm::terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode, size};
+use crossterm::terminal::{
+    Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode,
+    enable_raw_mode, size,
+};
 use crossterm::{Command, queue};
 use std::io::{Error, Write, stdout};
 
@@ -55,6 +58,16 @@ impl Terminal {
 
     pub fn show_caret() -> Result<(), Error> {
         Self::queue_command(Show)?;
+        Ok(())
+    }
+
+    pub fn enter_alternate_screen() -> Result<(), Error> {
+        Self::queue_command(EnterAlternateScreen)?;
+        Ok(())
+    }
+
+    pub fn leave_alternate_screen() -> Result<(), Error> {
+        Self::queue_command(LeaveAlternateScreen)?;
         Ok(())
     }
 
