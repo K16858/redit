@@ -1,5 +1,7 @@
 use super::terminal::{Position, Size, Terminal};
 mod buffer;
+mod line;
+mod location;
 use buffer::Buffer;
 use std::io::Error;
 
@@ -59,14 +61,9 @@ impl View {
     fn render_buffer_screen(&self) -> Result<(), Error> {
         let Size { width, .. } = Terminal::size();
         for (i, line) in self.buffer.lines.iter().enumerate() {
-            let truncated_line = if line.len() >= width {
-                &line[0..width]
-            } else {
-                line
-            };
             Terminal::move_caret_to(Position { col: 0, row: i })?;
             Terminal::clear_line()?;
-            Terminal::print(truncated_line)?;
+            Terminal::print(&line.get(0..width))?;
         }
         Ok(())
     }
