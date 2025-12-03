@@ -27,14 +27,14 @@ impl TryFrom<Event> for EditorCommand {
                 code, modifiers, ..
             }) => match (code, modifiers) {
                 (KeyCode::Char('q'), KeyModifiers::CONTROL) => Ok(Self::Quit),
+                (KeyCode::Down, KeyModifiers::CONTROL) => Ok(Self::Move(Direction::PageDown)),
+                (KeyCode::Up, KeyModifiers::CONTROL) => Ok(Self::Move(Direction::PageUp)),
+                (KeyCode::Left, KeyModifiers::CONTROL) => Ok(Self::Move(Direction::Home)),
+                (KeyCode::Right, KeyModifiers::CONTROL) => Ok(Self::Move(Direction::End)),
                 (KeyCode::Up, _) => Ok(Self::Move(Direction::Up)),
                 (KeyCode::Down, _) => Ok(Self::Move(Direction::Down)),
                 (KeyCode::Left, _) => Ok(Self::Move(Direction::Left)),
                 (KeyCode::Right, _) => Ok(Self::Move(Direction::Right)),
-                (KeyCode::PageDown, _) => Ok(Self::Move(Direction::PageDown)),
-                (KeyCode::PageUp, _) => Ok(Self::Move(Direction::PageUp)),
-                (KeyCode::Home, _) => Ok(Self::Move(Direction::Home)),
-                (KeyCode::End, _) => Ok(Self::Move(Direction::End)),
                 _ => Err(format!("Key Code not supported: {code:?}")),
             },
             Event::Resize(width_u16, height_u16) => {
