@@ -148,6 +148,13 @@ impl View {
                 x = width.saturating_sub(1);
             }
         }
+        x = self
+            .buffer
+            .lines
+            .get(y)
+            .map_or(0, |line| min(line.len(), x));
+        y = min(y, self.buffer.lines.len());
+
         self.location = Location { x, y };
         self.scroll_location_into_view();
     }
