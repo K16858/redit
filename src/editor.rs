@@ -5,22 +5,15 @@ use std::{
     io::Error,
     panic::{set_hook, take_hook},
 };
-use terminal::{Position, Terminal};
+use terminal::Terminal;
 mod view;
 use view::View;
 mod editor_command;
 use editor_command::EditorCommand;
 
-#[derive(Copy, Clone, Default)]
-struct Location {
-    x: usize,
-    y: usize,
-}
-
 #[derive(Default)]
 pub struct Editor {
     should_quit: bool,
-    location: Location,
     view: View,
 }
 
@@ -39,7 +32,6 @@ impl Editor {
         }
         Ok(Self {
             should_quit: false,
-            location: Location::default(),
             view,
         })
     }
@@ -87,17 +79,13 @@ impl Editor {
 
     fn refresh_screen(&mut self) {
         let _ = Terminal::hide_caret();
-        let _ = Terminal::move_caret_to(self.view.get_position());
         if self.should_quit {
             let _ = Terminal::clear_screen();
             let _ = Terminal::print("bye.\r\n");
         } else {
             let _ = self.view.render();
-            let _ = Terminal::move_caret_to(Position {
-                col: self.location.x,
-                row: self.location.y,
-            });
         }
+        let _ = Terminal::move_caret_to(self.view.get_position());
         let _ = Terminal::show_caret();
         let _ = Terminal::execute();
     }
