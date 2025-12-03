@@ -1,8 +1,12 @@
-use super::terminal::{Position, Size, Terminal};
+use super::{
+    editor_command::{Direction, EditorCommand},
+    terminal::{Position, Size, Terminal},
+};
 mod buffer;
 mod line;
 mod location;
 use buffer::Buffer;
+use location::Location;
 use std::io::Error;
 
 const NAME: &str = env!("CARGO_PKG_NAME");
@@ -12,6 +16,7 @@ pub struct View {
     buffer: Buffer,
     needs_redraw: bool,
     size: Size,
+    location: Location,
 }
 
 impl Default for View {
@@ -20,6 +25,7 @@ impl Default for View {
             buffer: Buffer::default(),
             needs_redraw: true,
             size: Terminal::size(),
+            location: Location::default(),
         }
     }
 }
@@ -90,6 +96,46 @@ impl View {
         Terminal::clear_line()?;
         Terminal::print(line_text)?;
         Ok(())
+    }
+
+    fn move_text_location(&mut self, direction: &Direction) {
+        let Location { mut x, mut y } = self.location;
+        let Size { height, width } = self.size;
+        match direction {
+            Direction::Up => {
+                y = y.saturating_sub(1);
+            }
+            Direction::Down => {
+                y = y.saturating_add(1);
+            }
+            Direction::Left => {
+                x = x.saturating_sub(1);
+            }
+            Direction::Right => {
+                x = x.saturating_add(1);
+            }
+            Direction::PageUp => {
+                y = 0;
+            }
+            Direction::PageDown => {
+                y = height.saturating_sub(1);
+            }
+            Direction::Home => {
+                x = 0;
+            }
+            Direction::End => {
+                x = width.saturating_sub(1);
+            }
+        }
+        self.location = Location { x, y };
+    }
+
+    pub fn handle_command(&mut self, command: EditorCommand) {
+        match command {
+            EditorCommand::Resize(size) => self.resize(size),
+            EditorCommand::Move(direction) => self.move_text_location(&direction),
+            EditorCommand::Quit => {}
+        }
     }
 
     pub fn load(&mut self, file_name: &str) {
