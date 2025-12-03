@@ -3,18 +3,18 @@ use std::convert::TryFrom;
 
 use super::terminal::Size;
 
-pub enum Direction {
+pub enum MoveCommand {
     PageUp,
     PageDown,
-    Home,
-    End,
+    LineStart,
+    LineEnd,
     Up,
     Left,
     Right,
     Down,
 }
 pub enum EditorCommand {
-    Move(Direction),
+    Move(MoveCommand),
     Resize(Size),
     Quit,
 }
@@ -27,14 +27,14 @@ impl TryFrom<Event> for EditorCommand {
                 code, modifiers, ..
             }) => match (code, modifiers) {
                 (KeyCode::Char('q'), KeyModifiers::CONTROL) => Ok(Self::Quit),
-                (KeyCode::Down, KeyModifiers::CONTROL) => Ok(Self::Move(Direction::PageDown)),
-                (KeyCode::Up, KeyModifiers::CONTROL) => Ok(Self::Move(Direction::PageUp)),
-                (KeyCode::Left, KeyModifiers::CONTROL) => Ok(Self::Move(Direction::Home)),
-                (KeyCode::Right, KeyModifiers::CONTROL) => Ok(Self::Move(Direction::End)),
-                (KeyCode::Up, _) => Ok(Self::Move(Direction::Up)),
-                (KeyCode::Down, _) => Ok(Self::Move(Direction::Down)),
-                (KeyCode::Left, _) => Ok(Self::Move(Direction::Left)),
-                (KeyCode::Right, _) => Ok(Self::Move(Direction::Right)),
+                (KeyCode::Up, KeyModifiers::CONTROL) => Ok(Self::Move(MoveCommand::PageUp)),
+                (KeyCode::Down, KeyModifiers::CONTROL) => Ok(Self::Move(MoveCommand::PageDown)),
+                (KeyCode::Left, KeyModifiers::CONTROL) => Ok(Self::Move(MoveCommand::LineStart)),
+                (KeyCode::Right, KeyModifiers::CONTROL) => Ok(Self::Move(MoveCommand::LineEnd)),
+                (KeyCode::Up, _) => Ok(Self::Move(MoveCommand::Up)),
+                (KeyCode::Down, _) => Ok(Self::Move(MoveCommand::Down)),
+                (KeyCode::Left, _) => Ok(Self::Move(MoveCommand::Left)),
+                (KeyCode::Right, _) => Ok(Self::Move(MoveCommand::Right)),
                 _ => Err(format!("Key Code not supported: {code:?}")),
             },
             Event::Resize(width_u16, height_u16) => {
