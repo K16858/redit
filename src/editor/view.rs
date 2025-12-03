@@ -110,14 +110,10 @@ impl View {
 
     fn move_text_location(&mut self, direction: &Direction) {
         let Location { mut x, mut y } = self.location;
-        let Size { height, width } = self.size;
+        let Size { height, .. } = self.size;
         match direction {
-            Direction::Up => {
-                y = y.saturating_sub(1);
-            }
-            Direction::Down => {
-                y = y.saturating_add(1);
-            }
+            Direction::Up => y = y.saturating_sub(1),
+            Direction::Down => y = y.saturating_add(1),
             Direction::Left => {
                 if x > 0 {
                     x -= 1;
@@ -135,18 +131,10 @@ impl View {
                     x = 0;
                 }
             }
-            Direction::PageUp => {
-                y = 0;
-            }
-            Direction::PageDown => {
-                y = height.saturating_sub(1);
-            }
-            Direction::Home => {
-                x = 0;
-            }
-            Direction::End => {
-                x = width.saturating_sub(1);
-            }
+            Direction::PageUp => y = y.saturating_sub(height).saturating_sub(1),
+            Direction::PageDown => y = y.saturating_add(height).saturating_sub(1),
+            Direction::Home => x = 0,
+            Direction::End => x = self.buffer.lines.get(y).map_or(0, Line::len),
         }
         x = self
             .buffer
