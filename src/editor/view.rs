@@ -74,7 +74,7 @@ impl View {
             if let Some(line) = self.buffer.lines.get(current_row.saturating_add(top)) {
                 let left = self.scroll_offset.x;
                 let right = self.scroll_offset.x.saturating_add(width);
-                Self::render_line(current_row, &line.get(left..right))?;
+                Self::render_line(current_row, &line.get(left..right));
             }
         }
         Ok(())
@@ -88,20 +88,18 @@ impl View {
         let spaces = " ".repeat(padding - 1);
         welcome_message = format!("~{spaces}{welcome_message}");
         welcome_message.truncate(width);
-        Self::render_line(at, &welcome_message)?;
+        Self::render_line(at, &welcome_message);
         Ok(())
     }
 
     fn draw_empty_row(at: usize) -> Result<(), Error> {
-        Self::render_line(at, "~")?;
+        Self::render_line(at, "~");
         Ok(())
     }
 
-    fn render_line(at: usize, line_text: &str) -> Result<(), Error> {
-        Terminal::move_caret_to(Position { row: at, col: 0 })?;
-        Terminal::clear_line()?;
-        Terminal::print(line_text)?;
-        Ok(())
+    fn render_line(at: usize, line_text: &str) {
+        let result = Terminal::print_row(at, line_text);
+        debug_assert!(result.is_ok(), "Failed to render line");
     }
 
     pub fn get_position(&self) -> Position {

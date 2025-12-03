@@ -81,10 +81,7 @@ impl Editor {
                 }
             }
         } else {
-            // #[cfg(debug_assertions)]
-            // {
-            //     panic!("Received and discarded unsupported or non-press event.");
-            // }
+            return;
         }
     }
 
