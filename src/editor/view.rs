@@ -1,7 +1,9 @@
+use self::line::Line;
 use super::{
     editor_command::{Direction, EditorCommand},
     terminal::{Position, Size, Terminal},
 };
+use std::cmp::min;
 mod buffer;
 mod line;
 mod location;
@@ -117,10 +119,21 @@ impl View {
                 y = y.saturating_add(1);
             }
             Direction::Left => {
-                x = x.saturating_sub(1);
+                if x > 0 {
+                    x -= 1;
+                } else if y > 0 {
+                    y -= 1;
+                    x = self.buffer.lines.get(y).map_or(0, Line::len);
+                }
             }
             Direction::Right => {
-                x = x.saturating_add(1);
+                let width = self.buffer.lines.get(y).map_or(0, Line::len);
+                if x < width {
+                    x += 1;
+                } else {
+                    y = y.saturating_add(1);
+                    x = 0;
+                }
             }
             Direction::PageUp => {
                 y = 0;
