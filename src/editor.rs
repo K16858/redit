@@ -81,16 +81,16 @@ impl Editor {
                 }
             }
         } else {
-            #[cfg(debug_assertions)]
-            {
-                panic!("Received and discarded unsupported or non-press event.");
-            }
+            // #[cfg(debug_assertions)]
+            // {
+            //     panic!("Received and discarded unsupported or non-press event.");
+            // }
         }
     }
 
     fn refresh_screen(&mut self) {
         let _ = Terminal::hide_caret();
-        let _ = Terminal::move_caret_to(Position::default());
+        let _ = Terminal::move_caret_to(self.view.get_position());
         if self.should_quit {
             let _ = Terminal::clear_screen();
             let _ = Terminal::print("bye.\r\n");

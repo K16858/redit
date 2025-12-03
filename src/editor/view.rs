@@ -68,11 +68,14 @@ impl View {
     }
 
     fn render_buffer_screen(&self) -> Result<(), Error> {
-        let Size { width, .. } = Terminal::size();
-        for (i, line) in self.buffer.lines.iter().enumerate() {
-            Terminal::move_caret_to(Position { col: 0, row: i })?;
-            Terminal::clear_line()?;
-            Terminal::print(&line.get(0..width))?;
+        let Size { width, height } = Terminal::size();
+        let top = self.scroll_offset.y;
+        for current_row in 0..height {
+            if let Some(line) = self.buffer.lines.get(current_row.saturating_add(top)) {
+                let left = self.scroll_offset.x;
+                let right = self.scroll_offset.x.saturating_add(width);
+                Self::render_line(current_row, &line.get(left..right))?;
+            }
         }
         Ok(())
     }
