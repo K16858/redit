@@ -17,6 +17,7 @@ pub struct View {
     needs_redraw: bool,
     size: Size,
     location: Location,
+    scroll_offset: Location,
 }
 
 impl Default for View {
@@ -26,6 +27,7 @@ impl Default for View {
             needs_redraw: true,
             size: Terminal::size(),
             location: Location::default(),
+            scroll_offset: Location::default(),
         }
     }
 }
@@ -33,6 +35,7 @@ impl Default for View {
 impl View {
     pub fn resize(&mut self, to: Size) {
         self.size = to;
+        self.scroll_location_into_view();
         self.needs_redraw = true;
     }
 
@@ -98,6 +101,10 @@ impl View {
         Ok(())
     }
 
+    pub fn get_position(&self) -> Position {
+        self.location.subtract(&self.scroll_offset).into()
+    }
+
     fn move_text_location(&mut self, direction: &Direction) {
         let Location { mut x, mut y } = self.location;
         let Size { height, width } = self.size;
@@ -128,6 +135,30 @@ impl View {
             }
         }
         self.location = Location { x, y };
+        self.scroll_location_into_view();
+    }
+
+    fn scroll_location_into_view(&mut self) {
+        let Location { x, y } = self.location;
+        let Size { width, height } = self.size;
+        let mut offset_changed = false;
+
+        if y < self.scroll_offset.y {
+            self.scroll_offset.y = y;
+            offset_changed = true;
+        } else if y >= self.scroll_offset.y.saturating_add(height) {
+            self.scroll_offset.y = y.saturating_sub(height).saturating_add(1);
+            offset_changed = true;
+        }
+
+        if x < self.scroll_offset.x {
+            self.scroll_offset.x = x;
+            offset_changed = true;
+        } else if x >= self.scroll_offset.x.saturating_add(width) {
+            self.scroll_offset.x = x.saturating_sub(width).saturating_add(1);
+            offset_changed = true;
+        }
+        self.needs_redraw = offset_changed;
     }
 
     pub fn handle_command(&mut self, command: EditorCommand) {
