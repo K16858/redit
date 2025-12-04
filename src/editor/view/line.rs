@@ -33,15 +33,18 @@ impl Line {
         let fragments = line_str
             .graphemes(true)
             .map(|grapheme| {
-                let unicode_width = grapheme.width();
-                let rendered_width = match unicode_width {
-                    0 | 1 => GraphemeWidth::Half,
-                    _ => GraphemeWidth::Full,
-                };
-                let replacement = match unicode_width {
-                    0 => Some('·'),
-                    _ => None,
-                };
+                let (replacement, rendered_width) = Self::replacement_character(grapheme)
+                    .map_or_else(
+                        || {
+                            let unicode_width = grapheme.width();
+                            let rendered_width = match unicode_width {
+                                0 | 1 => GraphemeWidth::Half,
+                                _ => GraphemeWidth::Full,
+                            };
+                            (None, rendered_width)
+                        },
+                        |replacement| (Some(replacement), GraphemeWidth::Half),
+                    );
 
                 TextFragment {
                     grapheme: grapheme.to_string(),
