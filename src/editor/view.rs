@@ -205,7 +205,10 @@ impl View {
         } else {
             false
         };
-        self.needs_redraw = self.needs_redraw || offset_changed;
+
+        if offset_changed {
+            self.needs_redraw = true;
+        }
     }
 
     fn scroll_horizontally(&mut self, to: usize) {
@@ -219,7 +222,10 @@ impl View {
         } else {
             false
         };
-        self.needs_redraw = self.needs_redraw || offset_changed;
+
+        if offset_changed {
+            self.needs_redraw = true;
+        }
     }
 
     fn scroll_text_location_into_view(&mut self) {
