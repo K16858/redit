@@ -108,6 +108,7 @@ impl Line {
     pub fn grapheme_count(&self) -> usize {
         self.fragments.len()
     }
+
     pub fn width_until(&self, grapheme_index: usize) -> usize {
         self.fragments
             .iter()
@@ -117,5 +118,20 @@ impl Line {
                 GraphemeWidth::Full => 2,
             })
             .sum()
+    }
+
+    pub fn insert_char(&mut self, character: char, grapheme_index: usize) {
+        let mut result = String::new();
+
+        for (index, fragment) in self.fragments.iter().enumerate() {
+            if index == grapheme_index {
+                result.push(character);
+            }
+            result.push_str(&fragment.grapheme);
+        }
+        if grapheme_index >= self.fragments.len() {
+            result.push(character);
+        }
+        self.fragments = Self::str_to_fragments(&result);
     }
 }
