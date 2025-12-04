@@ -249,6 +249,12 @@ impl View {
             .lines
             .get(self.text_location.line_index)
             .map_or(0, Line::grapheme_count);
+
+        let grapheme_delta = new_len.saturating_sub(old_len);
+        if grapheme_delta > 0 {
+            self.move_right();
+        }
+        self.needs_redraw = true;
     }
 
     pub fn load(&mut self, file_name: &str) {
