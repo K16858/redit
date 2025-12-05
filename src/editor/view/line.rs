@@ -137,7 +137,7 @@ impl Line {
 
     fn delete(&mut self, grapheme_index: usize) {
         let mut result = String::new();
-        for (index, fragment) in self.fragments.iter.enumerate() {
+        for (index, fragment) in self.fragments.iter().enumerate() {
             if index != grapheme_index {
                 result.push_str(&fragment.grapheme);
             }
