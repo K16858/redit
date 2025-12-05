@@ -240,6 +240,8 @@ impl View {
             EditorCommand::Move(direction) => self.move_text_location(&direction),
             EditorCommand::Quit => {}
             EditorCommand::Insert(character) => self.insert_char(character),
+            EditorCommand::Backspace => self.backspace(),
+            EditorCommand::Delete => self.delete(),
         }
     }
 
@@ -268,5 +270,15 @@ impl View {
             self.buffer = buffer;
             self.needs_redraw = true;
         }
+    }
+
+    fn backspace(&mut self) {
+        self.move_left();
+        self.delete();
+    }
+
+    fn delete(&mut self) {
+        self.buffer.delete(self.text_location);
+        self.needs_redraw = true;
     }
 }
