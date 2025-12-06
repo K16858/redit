@@ -260,7 +260,7 @@ impl View {
 
         let grapheme_delta = new_len.saturating_sub(old_len);
         if grapheme_delta > 0 {
-            self.move_right();
+            self.move_text_location(&MoveCommand::Right);
         }
         self.needs_redraw = true;
     }
