@@ -243,6 +243,7 @@ impl View {
             EditorCommand::Backspace => self.backspace(),
             EditorCommand::Delete => self.delete(),
             EditorCommand::Enter => self.insert_newline(),
+            EditorCommand::Save => self.save(),
         }
     }
 
@@ -289,5 +290,9 @@ impl View {
     fn delete(&mut self) {
         self.buffer.delete(self.text_location);
         self.needs_redraw = true;
+    }
+
+    fn save(&self) {
+        let _ = self.buffer.save();
     }
 }
