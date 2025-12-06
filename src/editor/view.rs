@@ -273,8 +273,10 @@ impl View {
     }
 
     fn backspace(&mut self) {
-        self.move_left();
-        self.delete();
+        if self.text_location.line_index != 0 || self.text_location.grapheme_index != 0 {
+            self.move_text_location(&MoveCommand::Left);
+            self.delete();
+        }
     }
 
     fn delete(&mut self) {
