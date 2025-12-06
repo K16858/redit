@@ -144,6 +144,12 @@ impl Line {
         }
         self.fragments = Self::str_to_fragments(&result);
     }
+
+    pub fn append(&mut self, other: &Self) {
+        let mut concat = self.to_string();
+        concat.push_str(&other.to_string());
+        self.fragments = Self::str_to_fragments(&concat);
+    }
 }
 
 impl fmt::Display for Line {
