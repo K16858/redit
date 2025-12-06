@@ -242,6 +242,7 @@ impl View {
             EditorCommand::Insert(character) => self.insert_char(character),
             EditorCommand::Backspace => self.backspace(),
             EditorCommand::Delete => self.delete(),
+            EditorCommand::Enter => self.insert_newline(),
         }
     }
 
@@ -262,6 +263,12 @@ impl View {
         if grapheme_delta > 0 {
             self.move_text_location(&MoveCommand::Right);
         }
+        self.needs_redraw = true;
+    }
+
+    fn insert_newline(&mut self) {
+        self.buffer.insert_newline(self.text_location);
+        self.move_text_location(&MoveCommand::Right);
         self.needs_redraw = true;
     }
 
