@@ -53,6 +53,15 @@ impl View {
         }
     }
 
+    pub fn get_status(&self) -> DocumentStatus {
+        DocumentStatus {
+            total_lines: self.buffer.height(),
+            current_line_index: self.text_location.line_index,
+            file_name: self.buffer.file_name.clone(),
+            is_modified: self.buffer.modified,
+        }
+    }
+
     pub fn resize(&mut self, to: Size) {
         self.size = to;
         self.scroll_text_location_into_view();
