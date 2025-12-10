@@ -10,6 +10,8 @@ mod view;
 use view::View;
 mod editor_command;
 use editor_command::EditorCommand;
+mod status_bar;
+use status_bar::StatusBar;
 
 #[derive(Default, Eq, PartialEq, Debug)]
 pub struct DocumentStatus {
@@ -19,10 +21,10 @@ pub struct DocumentStatus {
     file_name: Option<String>,
 }
 
-#[derive(Default)]
 pub struct Editor {
     should_quit: bool,
     view: View,
+    status_bar: StatusBar,
 }
 
 impl Editor {
@@ -33,7 +35,7 @@ impl Editor {
             current_hook(panic_info);
         }));
         Terminal::initialize()?;
-        let mut view = View::default();
+        let mut view = View::new(2);
         let args: Vec<String> = env::args().collect();
         if let Some(file_name) = args.get(1) {
             view.load(file_name);
@@ -41,6 +43,7 @@ impl Editor {
         Ok(Self {
             should_quit: false,
             view,
+            status_bar: StatusBar::new(1),
         })
     }
 
@@ -70,6 +73,9 @@ impl Editor {
                     self.should_quit = true;
                 } else {
                     self.view.handle_command(command);
+                    if let EditorCommand::Resize(size) = command {
+                        self.status_bar.resize(size);
+                    }
                 }
             }
         } else {
@@ -84,6 +90,7 @@ impl Editor {
             let _ = Terminal::print("bye.\r\n");
         } else {
             let _ = self.view.render();
+            self.status_bar.render();
         }
         let _ = Terminal::move_caret_to(self.view.caret_position());
         let _ = Terminal::show_caret();
@@ -105,6 +112,8 @@ impl Editor {
                     }
                 }
             }
+            let status = self.view.get_status();
+            self.status_bar.update_status(status);
         }
     }
 }

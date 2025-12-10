@@ -86,7 +86,7 @@ impl View {
         let Size { height, .. } = self.size;
         let vertical_center = height / 3;
 
-        for current_row in 0..height {
+        for current_row in 0..height - 1 {
             if current_row == vertical_center {
                 Self::draw_welcome_message(current_row)?;
             } else {
