@@ -1,5 +1,7 @@
 mod terminal;
 use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
+mod document_status;
+use document_status::DocumentStatus;
 use std::{
     env,
     io::Error,
@@ -12,14 +14,6 @@ mod editor_command;
 use editor_command::EditorCommand;
 mod status_bar;
 use status_bar::StatusBar;
-
-#[derive(Default, Eq, PartialEq, Debug)]
-pub struct DocumentStatus {
-    total_lines: usize,
-    current_line_index: usize,
-    is_modified: bool,
-    file_name: Option<String>,
-}
 
 pub struct Editor {
     should_quit: bool,
