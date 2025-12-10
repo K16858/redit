@@ -3,6 +3,7 @@ use std::convert::TryFrom;
 
 use super::terminal::Size;
 
+#[derive(Clone, Copy)]
 pub enum MoveCommand {
     PageUp,
     PageDown,
@@ -13,6 +14,8 @@ pub enum MoveCommand {
     Right,
     Down,
 }
+
+#[derive(Clone, Copy)]
 pub enum EditorCommand {
     Move(MoveCommand),
     Resize(Size),
