@@ -11,6 +11,14 @@ use view::View;
 mod editor_command;
 use editor_command::EditorCommand;
 
+#[derive(Default, Eq, PartialEq, Debug)]
+pub struct DocumentStatus {
+    total_lines: usize,
+    current_line_index: usize,
+    is_modified: bool,
+    file_name: Option<String>,
+}
+
 #[derive(Default)]
 pub struct Editor {
     should_quit: bool,
