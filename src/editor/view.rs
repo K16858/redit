@@ -316,7 +316,7 @@ impl View {
         self.needs_redraw = true;
     }
 
-    fn save(&self) {
+    fn save(&mut self) {
         let _ = self.buffer.save();
     }
 }
