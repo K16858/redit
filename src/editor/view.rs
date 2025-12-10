@@ -1,5 +1,6 @@
 use self::line::Line;
 use super::{
+    DocumentStatus,
     editor_command::{EditorCommand, MoveCommand},
     terminal::{Position, Size, Terminal},
 };
@@ -38,6 +39,20 @@ impl Default for View {
     }
 }
 impl View {
+    pub fn new(margin_bottom: usize) -> Self {
+        let terminal_size = Terminal::size().unwrap_or_default();
+        Self {
+            buffer: Buffer::default(),
+            needs_redraw: true,
+            size: Size {
+                width: terminal_size.width,
+                height: terminal_size.height.saturating_sub(margin_bottom),
+            },
+            text_location: Location::default(),
+            scroll_offset: Position::default(),
+        }
+    }
+
     pub fn resize(&mut self, to: Size) {
         self.size = to;
         self.scroll_text_location_into_view();
