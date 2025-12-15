@@ -57,7 +57,7 @@ impl View {
         DocumentStatus {
             total_lines: self.buffer.height(),
             current_line_index: self.text_location.line_index,
-            file_name: self.buffer.file_name.clone(),
+            file_name: format!("{}", self.buffer.file_info),
             is_modified: self.buffer.modified,
         }
     }
