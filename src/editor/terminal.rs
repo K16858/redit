@@ -101,6 +101,19 @@ impl Terminal {
         Ok(())
     }
 
+    pub fn print_inverted_row(row: usize, line_text: &str) -> Result<(), Error> {
+        let width = Self::size()?.width;
+        Self::print_row(
+            row,
+            &format!(
+                "{}{:width$.width$}{}",
+                Attribute::Reverse,
+                line_text,
+                Attribute::Reset
+            ),
+        )
+    }
+
     pub fn print(string: &str) -> Result<(), Error> {
         Self::queue_command(Print(string))?;
         Ok(())
