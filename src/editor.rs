@@ -2,6 +2,7 @@ mod terminal;
 use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
 mod document_status;
 use document_status::DocumentStatus;
+mod fileinfo;
 use std::{
     env,
     io::Error,
