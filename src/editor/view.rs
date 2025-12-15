@@ -1,6 +1,6 @@
 use self::line::Line;
 use super::{
-    DocumentStatus,
+    DocumentStatus, NAME, VERSION,
     editor_command::{EditorCommand, MoveCommand},
     terminal::{Position, Size, Terminal},
 };
@@ -9,9 +9,6 @@ mod buffer;
 mod line;
 use buffer::Buffer;
 use std::io::Error;
-
-const NAME: &str = env!("CARGO_PKG_NAME");
-const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Copy, Clone, Default)]
 pub struct Location {

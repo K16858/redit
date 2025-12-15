@@ -16,6 +16,9 @@ use editor_command::EditorCommand;
 mod status_bar;
 use status_bar::StatusBar;
 
+pub const NAME: &str = env!("CARGO_PKG_NAME");
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 pub struct Editor {
     should_quit: bool,
     view: View,
