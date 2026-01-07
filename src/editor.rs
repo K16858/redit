@@ -3,7 +3,6 @@ use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
 mod document_status;
 use document_status::DocumentStatus;
 mod fileinfo;
-use self::terminal::Size;
 use std::{
     env,
     io::Error,
@@ -14,9 +13,11 @@ mod view;
 use view::View;
 mod editor_command;
 use editor_command::EditorCommand;
+mod message_bar;
 mod status_bar;
 use ui_component::UIComponent;
 mod ui_component;
+use self::{message_bar::MessageBar, terminal::Size};
 use status_bar::StatusBar;
 
 pub const NAME: &str = env!("CARGO_PKG_NAME");
@@ -28,6 +29,7 @@ pub struct Editor {
     view: View,
     status_bar: StatusBar,
     terminal_size: Size,
+    message_bar: MessageBar,
     title: String,
 }
 
@@ -46,6 +48,10 @@ impl Editor {
         if let Some(file_name) = args.get(1) {
             editor.view.load(file_name);
         }
+
+        editor
+            .message_bar
+            .update_message("HELP: Ctrl-S = save | Ctrl-Q = quit".to_string());
 
         editor.refresh_status();
         Ok(editor)
@@ -85,11 +91,10 @@ impl Editor {
             if let Ok(command) = EditorCommand::try_from(event) {
                 if matches!(command, EditorCommand::Quit) {
                     self.should_quit = true;
+                } else if let EditorCommand::Resize(size) = command {
+                    self.resize(size);
                 } else {
                     self.view.handle_command(command);
-                    if let EditorCommand::Resize(size) = command {
-                        self.status_bar.resize(size);
-                    }
                 }
             }
         } else {
@@ -104,6 +109,10 @@ impl Editor {
             width: size.width,
         });
         self.status_bar.resize(Size {
+            height: 1,
+            width: size.width,
+        });
+        self.message_bar.resize(Size {
             height: 1,
             width: size.width,
         });
