@@ -119,15 +119,20 @@ impl Editor {
     }
 
     fn refresh_screen(&mut self) {
+        if self.terminal_size.height == 0 || self.terminal_size.width == 0 {
+            return;
+        }
         let _ = Terminal::hide_caret();
-        if self.should_quit {
-            let _ = Terminal::clear_screen();
-            let _ = Terminal::print("bye.\r\n");
-        } else {
-            let _ = self.view.render();
+        self.message_bar
+            .render(self.terminal_size.height.saturating_sub(1));
+        if self.terminal_size.height > 1 {
             self.status_bar
                 .render(self.terminal_size.height.saturating_sub(2));
         }
+        if self.terminal_size.height > 2 {
+            let _ = self.view.draw(0);
+        }
+
         let _ = Terminal::move_caret_to(self.view.caret_position());
         let _ = Terminal::show_caret();
         let _ = Terminal::execute();

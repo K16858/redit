@@ -3,6 +3,7 @@ use super::{
     DocumentStatus, NAME, VERSION,
     editor_command::{EditorCommand, MoveCommand},
     terminal::{Position, Size, Terminal},
+    ui_component::UIComponent,
 };
 use std::cmp::min;
 mod buffer;
@@ -16,6 +17,7 @@ pub struct Location {
     pub line_index: usize,
 }
 
+#[derive(Default)]
 pub struct View {
     buffer: Buffer,
     needs_redraw: bool,
@@ -24,32 +26,7 @@ pub struct View {
     scroll_offset: Position,
 }
 
-impl Default for View {
-    fn default() -> Self {
-        Self {
-            buffer: Buffer::default(),
-            needs_redraw: true,
-            size: Terminal::size().unwrap_or_default(),
-            text_location: Location::default(),
-            scroll_offset: Position::default(),
-        }
-    }
-}
 impl View {
-    pub fn new(margin_bottom: usize) -> Self {
-        let terminal_size = Terminal::size().unwrap_or_default();
-        Self {
-            buffer: Buffer::default(),
-            needs_redraw: true,
-            size: Size {
-                width: terminal_size.width,
-                height: terminal_size.height.saturating_sub(margin_bottom),
-            },
-            text_location: Location::default(),
-            scroll_offset: Position::default(),
-        }
-    }
-
     pub fn get_status(&self) -> DocumentStatus {
         DocumentStatus {
             total_lines: self.buffer.height(),
@@ -59,48 +36,35 @@ impl View {
         }
     }
 
-    pub fn resize(&mut self, to: Size) {
-        self.size = to;
-        self.scroll_text_location_into_view();
-        self.needs_redraw = true;
-    }
-
-    pub fn render(&mut self) -> Result<(), Error> {
-        if !self.needs_redraw {
-            return Ok(());
-        }
-
-        if self.buffer.is_empty() {
-            Self::render_welcome_screen(self)?;
-        } else {
-            self.render_buffer_screen()?;
-        }
-        self.needs_redraw = false;
-        Ok(())
-    }
-
-    fn render_welcome_screen(&self) -> Result<(), Error> {
+    fn render_welcome_screen(&self, origin_y: usize) -> Result<(), Error> {
         let Size { height, .. } = self.size;
         let vertical_center = height / 3;
 
-        for current_row in 0..height - 1 {
-            if current_row == vertical_center {
-                Self::draw_welcome_message(current_row)?;
+        for row in 0..height {
+            let draw_row = origin_y + row;
+            if row == vertical_center {
+                Self::draw_welcome_message(draw_row)?;
             } else {
-                Self::draw_empty_row(current_row)?;
+                Self::draw_empty_row(draw_row)?;
             }
         }
         Ok(())
     }
 
-    fn render_buffer_screen(&self) -> Result<(), Error> {
-        let Size { width, height } = self.size;
+    fn render_buffer(&self, origin_y: usize) -> Result<(), Error> {
+        let Size { height, width } = self.size;
         let top = self.scroll_offset.row;
-        for current_row in 0..height {
-            if let Some(line) = self.buffer.lines.get(current_row.saturating_add(top)) {
+
+        for screen_row in 0..height {
+            let line_idx = top + screen_row;
+            let draw_row = origin_y + screen_row;
+
+            if let Some(line) = self.buffer.lines.get(line_idx) {
                 let left = self.scroll_offset.col;
-                let right = self.scroll_offset.col.saturating_add(width);
-                Self::render_line(current_row, &line.get_visible_graphemes(left..right));
+                let right = left + width;
+                Self::render_line(draw_row, &line.get_visible_graphemes(left..right))?;
+            } else {
+                Self::render_line(draw_row, "~")?;
             }
         }
         Ok(())
@@ -114,18 +78,17 @@ impl View {
         let spaces = " ".repeat(padding - 1);
         welcome_message = format!("~{spaces}{welcome_message}");
         welcome_message.truncate(width);
-        Self::render_line(at, &welcome_message);
+        Self::render_line(at, &welcome_message)?;
         Ok(())
     }
 
     fn draw_empty_row(at: usize) -> Result<(), Error> {
-        Self::render_line(at, "~");
+        Self::render_line(at, "~")?;
         Ok(())
     }
 
-    fn render_line(at: usize, line_text: &str) {
-        let result = Terminal::print_row(at, line_text);
-        debug_assert!(result.is_ok(), "Failed to render line");
+    fn render_line(at: usize, line_text: &str) -> Result<(), Error> {
+        Terminal::print_row(at, line_text)
     }
 
     pub fn caret_position(&self) -> Position {
@@ -228,7 +191,7 @@ impl View {
         };
 
         if offset_changed {
-            self.needs_redraw = true;
+            self.mark_redraw(true);
         }
     }
 
@@ -245,7 +208,7 @@ impl View {
         };
 
         if offset_changed {
-            self.needs_redraw = true;
+            self.mark_redraw(true);
         }
     }
 
@@ -285,19 +248,19 @@ impl View {
         if grapheme_delta > 0 {
             self.move_text_location(MoveCommand::Right);
         }
-        self.needs_redraw = true;
+        self.mark_redraw(true);
     }
 
     fn insert_newline(&mut self) {
         self.buffer.insert_newline(self.text_location);
         self.move_text_location(MoveCommand::Right);
-        self.needs_redraw = true;
+        self.mark_redraw(true);
     }
 
     pub fn load(&mut self, file_name: &str) {
         if let Ok(buffer) = Buffer::load(file_name) {
             self.buffer = buffer;
-            self.needs_redraw = true;
+            self.mark_redraw(true);
         }
     }
 
@@ -310,10 +273,32 @@ impl View {
 
     fn delete(&mut self) {
         self.buffer.delete(self.text_location);
-        self.needs_redraw = true;
+        self.mark_redraw(true);
     }
 
     fn save(&mut self) {
         let _ = self.buffer.save();
+    }
+}
+
+impl UIComponent for View {
+    fn mark_redraw(&mut self, value: bool) {
+        self.needs_redraw = value;
+    }
+
+    fn needs_redraw(&self) -> bool {
+        self.needs_redraw
+    }
+    fn set_size(&mut self, size: Size) {
+        self.size = size;
+        self.scroll_text_location_into_view();
+    }
+
+    fn draw(&mut self, origin_y: usize) -> Result<(), Error> {
+        if self.buffer.is_empty() {
+            self.render_welcome_screen(origin_y)
+        } else {
+            self.render_buffer(origin_y)
+        }
     }
 }
