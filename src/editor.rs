@@ -4,7 +4,7 @@ mod document_status;
 use document_status::DocumentStatus;
 mod fileinfo;
 use std::{
-    env,
+    default, env,
     io::Error,
     panic::{set_hook, take_hook},
 };
@@ -14,11 +14,14 @@ use view::View;
 mod editor_command;
 use editor_command::EditorCommand;
 mod status_bar;
+use ui_component::UIComponent;
+mod ui_component;
 use status_bar::StatusBar;
 
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+#[derive(Default)]
 pub struct Editor {
     should_quit: bool,
     view: View,
@@ -34,12 +37,7 @@ impl Editor {
             current_hook(panic_info);
         }));
         Terminal::initialize()?;
-        let mut editor = Self {
-            should_quit: false,
-            view: View::new(2),
-            status_bar: StatusBar::new(1),
-            title: String::new(),
-        };
+        let mut editor = Self::default();
         let args: Vec<String> = env::args().collect();
         if let Some(file_name) = args.get(1) {
             editor.view.load(file_name);
@@ -102,7 +100,7 @@ impl Editor {
             let _ = Terminal::print("bye.\r\n");
         } else {
             let _ = self.view.render();
-            self.status_bar.render();
+            self.status_bar.render(0);
         }
         let _ = Terminal::move_caret_to(self.view.caret_position());
         let _ = Terminal::show_caret();
