@@ -56,7 +56,7 @@ impl Buffer {
             self.modified = true;
         } else if let Some(line) = self.lines.get_mut(at.line_index) {
             line.insert_char(character, at.grapheme_index);
-            self.modified = true
+            self.modified = true;
         }
     }
 

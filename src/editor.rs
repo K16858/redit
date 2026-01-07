@@ -97,8 +97,6 @@ impl Editor {
                     self.view.handle_command(command);
                 }
             }
-        } else {
-            return;
         }
     }
 
