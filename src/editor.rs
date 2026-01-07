@@ -3,8 +3,9 @@ use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
 mod document_status;
 use document_status::DocumentStatus;
 mod fileinfo;
+use self::terminal::Size;
 use std::{
-    default, env,
+    env,
     io::Error,
     panic::{set_hook, take_hook},
 };
@@ -26,6 +27,7 @@ pub struct Editor {
     should_quit: bool,
     view: View,
     status_bar: StatusBar,
+    terminal_size: Size,
     title: String,
 }
 
@@ -38,6 +40,8 @@ impl Editor {
         }));
         Terminal::initialize()?;
         let mut editor = Self::default();
+        let size = Terminal::size().unwrap_or_default();
+        editor.resize(size);
         let args: Vec<String> = env::args().collect();
         if let Some(file_name) = args.get(1) {
             editor.view.load(file_name);
@@ -93,6 +97,18 @@ impl Editor {
         }
     }
 
+    fn resize(&mut self, size: Size) {
+        self.terminal_size = size;
+        self.view.resize(Size {
+            height: size.height.saturating_sub(2),
+            width: size.width,
+        });
+        self.status_bar.resize(Size {
+            height: 1,
+            width: size.width,
+        });
+    }
+
     fn refresh_screen(&mut self) {
         let _ = Terminal::hide_caret();
         if self.should_quit {
@@ -100,7 +116,8 @@ impl Editor {
             let _ = Terminal::print("bye.\r\n");
         } else {
             let _ = self.view.render();
-            self.status_bar.render(0);
+            self.status_bar
+                .render(self.terminal_size.height.saturating_sub(2));
         }
         let _ = Terminal::move_caret_to(self.view.caret_position());
         let _ = Terminal::show_caret();
