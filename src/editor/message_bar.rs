@@ -2,7 +2,7 @@ use std::io::Error;
 
 use super::{
     terminal::{Size, Terminal},
-    uicomponent::UIComponent,
+    ui_component::UIComponent,
 };
 
 #[derive(Default)]
