@@ -76,18 +76,14 @@ impl Editor {
         let mut editor = Self::default();
         let size = Terminal::size().unwrap_or_default();
         editor.resize(size);
+        editor.update_message("HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find");
+
         let args: Vec<String> = env::args().collect();
         if let Some(file_name) = args.get(1)
             && editor.view.load(file_name).is_err()
         {
-            editor
-                .message_bar
-                .update_message(&format!("ERROR: Could not open file: {file_name}"));
+            editor.update_message("ERROR: Could not open file: {file_name}");
         }
-
-        editor
-            .message_bar
-            .update_message("HELP: Ctrl-S = save | Ctrl-Q = quit");
 
         editor.refresh_status();
         Ok(editor)
@@ -137,7 +133,7 @@ impl Editor {
             System(Dismiss) => {
                 if self.command_bar.is_some() {
                     self.dismiss_prompt();
-                    self.message_bar.update_message("Save aborted.");
+                    self.update_message("Save aborted.");
                 }
             }
             Edit(edit_command) => {
@@ -192,9 +188,9 @@ impl Editor {
             self.view.save()
         };
         if result.is_ok() {
-            self.message_bar.update_message("File saved successfully.");
+            self.update_message("File saved successfully.");
         } else {
-            self.message_bar.update_message("Error writing file!");
+            self.update_message("Error writing file!");
         }
     }
 
@@ -202,7 +198,7 @@ impl Editor {
         if !self.view.get_status().is_modified || self.quit_times + 1 == QUIT_TIMES {
             self.should_quit = true;
         } else if self.view.get_status().is_modified {
-            self.message_bar.update_message(&format!(
+            self.update_message(&format!(
                 "WARNING! File has unsaved changes. Press Ctrl-Q {} more times to quit.",
                 QUIT_TIMES - self.quit_times - 1
             ));
@@ -283,6 +279,10 @@ impl Editor {
         let _ = Terminal::move_caret_to(new_caret_pos);
         let _ = Terminal::show_caret();
         let _ = Terminal::execute();
+    }
+
+    fn update_message(&mut self, new_message: &str) {
+        self.message_bar.update_message(new_message);
     }
 
     fn repl(&mut self) {
