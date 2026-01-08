@@ -27,7 +27,7 @@ use self::{
     command::{
         Command::{self, Edit, Move, System},
         Edit::InsertNewline,
-        System::{Dismiss, Quit, Resize, Save},
+        System::{Dismiss, Quit, Resize, Save, Search},
     },
     message_bar::MessageBar,
 };
@@ -38,6 +38,20 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const QUIT_TIMES: u8 = 2;
 
+#[derive(Eq, PartialEq, Default)]
+enum PromptType {
+    Search,
+    Save,
+    #[default]
+    None,
+}
+
+impl PromptType {
+    fn is_none(&self) -> bool {
+        *self == Self::None
+    }
+}
+
 #[derive(Default)]
 pub struct Editor {
     should_quit: bool,
@@ -45,7 +59,8 @@ pub struct Editor {
     status_bar: StatusBar,
     terminal_size: Size,
     message_bar: MessageBar,
-    command_bar: Option<CommandBar>,
+    command_bar: CommandBar,
+    prompt_type: PromptType,
     title: String,
     quit_times: u8,
 }
