@@ -29,7 +29,7 @@ use status_bar::StatusBar;
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const QUIT_TIMES: u8 = 3;
+const QUIT_TIMES: u8 = 2;
 
 #[derive(Default)]
 pub struct Editor {
