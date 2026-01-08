@@ -5,7 +5,7 @@ use crossterm::event::{
 };
 use std::convert::TryFrom;
 
-use super::terminal::Size;
+use super::size::Size;
 
 #[derive(Clone, Copy)]
 pub enum Move {

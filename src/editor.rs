@@ -1,7 +1,9 @@
 mod position;
+mod size;
 mod terminal;
 use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
 use position::Position;
+use size::Size;
 mod document_status;
 use document_status::DocumentStatus;
 mod fileinfo;
@@ -24,7 +26,6 @@ use self::{
         System::{Quit, Resize, Save},
     },
     message_bar::MessageBar,
-    terminal::Size,
 };
 use status_bar::StatusBar;
 
