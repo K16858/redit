@@ -254,11 +254,11 @@ impl View {
         self.mark_redraw(true);
     }
 
-    pub fn load(&mut self, file_name: &str) {
-        if let Ok(buffer) = Buffer::load(file_name) {
-            self.buffer = buffer;
-            self.mark_redraw(true);
-        }
+    pub fn load(&mut self, file_name: &str) -> Result<(), Error> {
+        let buffer = Buffer::load(file_name)?;
+        self.buffer = buffer;
+        self.mark_redraw(true);
+        Ok(())
     }
 
     fn backspace(&mut self) {

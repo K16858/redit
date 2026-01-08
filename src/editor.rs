@@ -55,12 +55,16 @@ impl Editor {
         editor.resize(size);
         let args: Vec<String> = env::args().collect();
         if let Some(file_name) = args.get(1) {
-            editor.view.load(file_name);
+            if editor.view.load(file_name).is_err() {
+                editor
+                    .message_bar
+                    .update_message(&format!("ERROR: Could not open file: {file_name}"));
+            }
         }
 
         editor
             .message_bar
-            .update_message("HELP: Ctrl-S = save | Ctrl-Q = quit".to_string());
+            .update_message("HELP: Ctrl-S = save | Ctrl-Q = quit");
 
         editor.refresh_status();
         Ok(editor)
@@ -85,7 +89,7 @@ impl Editor {
     fn handle_args(&mut self) {
         let args: Vec<String> = env::args().collect();
         if let Some(file_name) = args.get(1) {
-            self.view.load(file_name);
+            let _ = self.view.load(file_name);
         }
     }
 
@@ -105,13 +109,22 @@ impl Editor {
     }
 
     fn handle_save(&mut self) {
-        if self.view.save().is_ok() { {} } else { {} }
+        if self.view.save().is_ok() {
+            self.message_bar.update_message("File saved successfully.");
+        } else {
+            self.message_bar.update_message("Error writing file!");
+        }
     }
 
     fn handle_quit(&mut self) {
         if !self.view.get_status().is_modified || self.quit_times + 1 == QUIT_TIMES {
             self.should_quit = true;
         } else if self.view.get_status().is_modified {
+            self.message_bar.update_message(&format!(
+                "WARNING! File has unsaved changes. Press Ctrl-Q {} more times to quit.",
+                QUIT_TIMES - self.quit_times - 1
+            ));
+
             self.quit_times += 1;
         }
     }
@@ -119,6 +132,7 @@ impl Editor {
     fn reset_quit_times(&mut self) {
         if self.quit_times > 0 {
             self.quit_times = 0;
+            self.message_bar.update_message("");
         }
     }
 
