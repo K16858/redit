@@ -57,13 +57,12 @@ impl Editor {
         let size = Terminal::size().unwrap_or_default();
         editor.resize(size);
         let args: Vec<String> = env::args().collect();
-        if let Some(file_name) = args.get(1) {
-            if editor.view.load(file_name).is_err() {
+        if let Some(file_name) = args.get(1)
+            && editor.view.load(file_name).is_err() {
                 editor
                     .message_bar
                     .update_message(&format!("ERROR: Could not open file: {file_name}"));
             }
-        }
 
         editor
             .message_bar
@@ -146,11 +145,10 @@ impl Editor {
             _ => false,
         };
 
-        if should_process {
-            if let Ok(command) = Command::try_from(event) {
+        if should_process
+            && let Ok(command) = Command::try_from(event) {
                 self.process_command(command);
             }
-        }
     }
 
     fn resize(&mut self, size: Size) {

@@ -23,20 +23,19 @@ pub enum Move {
 impl TryFrom<KeyEvent> for Move {
     type Error = String;
     fn try_from(event: KeyEvent) -> Result<Self, Self::Error> {
-        match event {
-            KeyEvent {
-                code, modifiers, ..
-            } => match (code, modifiers) {
-                (Up, KeyModifiers::CONTROL) => Ok(Self::PageUp),
-                (Down, KeyModifiers::CONTROL) => Ok(Self::PageDown),
-                (Left, KeyModifiers::CONTROL) => Ok(Self::LineStart),
-                (Right, KeyModifiers::CONTROL) => Ok(Self::LineEnd),
-                (Up, _) => Ok(Self::Up),
-                (Down, _) => Ok(Self::Down),
-                (Left, _) => Ok(Self::Left),
-                (Right, _) => Ok(Self::Right),
-                _ => Err(format!("Key Code not supported: {code:?}")),
-            },
+        let KeyEvent {
+            code, modifiers, ..
+        } = event;
+        match (code, modifiers) {
+            (Up, KeyModifiers::CONTROL) => Ok(Self::PageUp),
+            (Down, KeyModifiers::CONTROL) => Ok(Self::PageDown),
+            (Left, KeyModifiers::CONTROL) => Ok(Self::LineStart),
+            (Right, KeyModifiers::CONTROL) => Ok(Self::LineEnd),
+            (Up, _) => Ok(Self::Up),
+            (Down, _) => Ok(Self::Down),
+            (Left, _) => Ok(Self::Left),
+            (Right, _) => Ok(Self::Right),
+            _ => Err(format!("Key Code not supported: {code:?}")),
         }
     }
 }
