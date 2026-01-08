@@ -15,9 +15,9 @@ impl CommandBar {
         match command {
             Edit::Insert(character) => self.value.append_char(character),
             Edit::Delete | Edit::InsertNewline => {}
-            Edit::DeleteBackward => self.value.delete_last(),
+            Edit::Backspace => self.value.delete_last(),
         }
-        self.set_needs_redraw(true);
+        self.mark_redraw(true);
     }
     pub fn caret_position_col(&self) -> usize {
         let max_width = self
@@ -35,7 +35,7 @@ impl CommandBar {
 }
 
 impl UIComponent for CommandBar {
-    fn set_needs_redraw(&mut self, value: bool) {
+    fn mark_redraw(&mut self, value: bool) {
         self.needs_redraw = value;
     }
     fn needs_redraw(&self) -> bool {
