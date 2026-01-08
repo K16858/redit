@@ -276,6 +276,14 @@ impl View {
     pub fn save(&mut self) -> Result<(), Error> {
         self.buffer.save()
     }
+
+    pub const fn is_file_loaded(&self) -> bool {
+        self.buffer.is_file_loaded()
+    }
+
+    pub fn save_as(&mut self, file_name: &str) -> Result<(), Error> {
+        self.buffer.save_as(file_name)
+    }
 }
 
 impl UIComponent for View {
