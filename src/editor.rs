@@ -1,5 +1,7 @@
+mod position;
 mod terminal;
 use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
+use position::Position;
 mod document_status;
 use document_status::DocumentStatus;
 mod fileinfo;

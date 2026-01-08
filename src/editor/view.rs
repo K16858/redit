@@ -1,8 +1,8 @@
 use self::line::Line;
 use super::{
-    DocumentStatus, NAME, VERSION,
+    DocumentStatus, NAME, Position, VERSION,
     command::{Edit, Move},
-    terminal::{Position, Size, Terminal},
+    terminal::{Size, Terminal},
     ui_component::UIComponent,
 };
 use std::cmp::min;
