@@ -4,8 +4,7 @@ use std::io::Write;
 
 use crate::editor::fileinfo::FileInfo;
 
-use super::Location;
-use super::line::Line;
+use super::{Line, Location};
 
 #[derive(Default)]
 pub struct Buffer {

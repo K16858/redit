@@ -1,13 +1,11 @@
-use self::line::Line;
 use super::{
-    DocumentStatus, NAME, Position, Size, VERSION,
+    DocumentStatus, Line, NAME, Position, Size, VERSION,
     command::{Edit, Move},
     terminal::Terminal,
     ui_component::UIComponent,
 };
 use std::cmp::min;
 mod buffer;
-mod line;
 use buffer::Buffer;
 use std::io::Error;
 
