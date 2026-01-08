@@ -8,6 +8,8 @@ use std::cmp::min;
 mod buffer;
 use buffer::Buffer;
 use std::io::Error;
+mod fileinfo;
+use fileinfo::FileInfo;
 
 #[derive(Copy, Clone, Default)]
 pub struct Location {

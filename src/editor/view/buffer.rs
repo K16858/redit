@@ -2,9 +2,7 @@ use std::fs::{File, read_to_string};
 use std::io::Error;
 use std::io::Write;
 
-use crate::editor::fileinfo::FileInfo;
-
-use super::{Line, Location};
+use super::{FileInfo, Line, Location};
 
 #[derive(Default)]
 pub struct Buffer {

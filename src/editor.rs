@@ -8,7 +8,6 @@ use position::Position;
 use size::Size;
 mod document_status;
 use document_status::DocumentStatus;
-mod fileinfo;
 use std::{
     env,
     io::Error,
