@@ -1,6 +1,6 @@
 use crossterm::event::{
     Event,
-    KeyCode::{Backspace, Char, Delete, Down, Enter, Left, Right, Tab, Up},
+    KeyCode::{Backspace, Char, Delete, Down, Enter, Esc, Left, Right, Tab, Up},
     KeyEvent, KeyModifiers,
 };
 use std::convert::TryFrom;
@@ -73,6 +73,7 @@ pub enum System {
     Save,
     Resize(Size),
     Quit,
+    Dismiss,
 }
 
 impl TryFrom<KeyEvent> for System {
@@ -88,6 +89,8 @@ impl TryFrom<KeyEvent> for System {
                 Char('s') => Ok(Self::Save),
                 _ => Err(format!("Unsupported CONTROL+{code:?} combination")),
             }
+        } else if modifiers == KeyModifiers::NONE && matches!(code, Esc) {
+            Ok(Self::Dismiss)
         } else {
             Err(format!(
                 "Unsupported key code {code:?} or modifier {modifiers:?}"
