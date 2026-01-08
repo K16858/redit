@@ -1,7 +1,7 @@
 use self::line::Line;
 use super::{
     DocumentStatus, NAME, VERSION,
-    editor_command::{EditorCommand, MoveCommand},
+    command::{Edit, Move},
     terminal::{Position, Size, Terminal},
     ui_component::UIComponent,
 };
@@ -104,17 +104,17 @@ impl View {
         Position { col, row }
     }
 
-    fn move_text_location(&mut self, direction: MoveCommand) {
+    pub fn handle_move_command(&mut self, direction: Move) {
         let Size { height, .. } = self.size;
         match direction {
-            MoveCommand::Up => self.move_up(1),
-            MoveCommand::Down => self.move_down(1),
-            MoveCommand::Left => self.move_left(),
-            MoveCommand::Right => self.move_right(),
-            MoveCommand::PageUp => self.move_up(height.saturating_sub(1)),
-            MoveCommand::PageDown => self.move_down(height.saturating_sub(1)),
-            MoveCommand::LineStart => self.move_to_start_of_line(),
-            MoveCommand::LineEnd => self.move_to_end_of_line(),
+            Move::Up => self.move_up(1),
+            Move::Down => self.move_down(1),
+            Move::Left => self.move_left(),
+            Move::Right => self.move_right(),
+            Move::PageUp => self.move_up(height.saturating_sub(1)),
+            Move::PageDown => self.move_down(height.saturating_sub(1)),
+            Move::LineStart => self.move_to_start_of_line(),
+            Move::LineEnd => self.move_to_end_of_line(),
         }
         self.scroll_text_location_into_view();
     }
@@ -123,6 +123,7 @@ impl View {
         self.text_location.line_index = self.text_location.line_index.saturating_sub(step);
         self.snap_to_valid_grapheme();
     }
+
     fn move_down(&mut self, step: usize) {
         self.text_location.line_index = self.text_location.line_index.saturating_add(step);
         self.snap_to_valid_grapheme();
@@ -218,16 +219,12 @@ impl View {
         self.scroll_horizontally(col);
     }
 
-    pub fn handle_command(&mut self, command: EditorCommand) {
+    pub fn handle_edit_command(&mut self, command: Edit) {
         match command {
-            EditorCommand::Resize(size) => self.resize(size),
-            EditorCommand::Move(direction) => self.move_text_location(direction),
-            EditorCommand::Quit => {}
-            EditorCommand::Insert(character) => self.insert_char(character),
-            EditorCommand::Backspace => self.backspace(),
-            EditorCommand::Delete => self.delete(),
-            EditorCommand::Enter => self.insert_newline(),
-            EditorCommand::Save => self.save(),
+            Edit::Insert(character) => self.insert_char(character),
+            Edit::InsertNewline => self.insert_newline(),
+            Edit::Backspace => self.backspace(),
+            Edit::Delete => self.delete(),
         }
     }
 
@@ -246,14 +243,14 @@ impl View {
 
         let grapheme_delta = new_len.saturating_sub(old_len);
         if grapheme_delta > 0 {
-            self.move_text_location(MoveCommand::Right);
+            self.handle_move_command(Move::Right);
         }
         self.mark_redraw(true);
     }
 
     fn insert_newline(&mut self) {
         self.buffer.insert_newline(self.text_location);
-        self.move_text_location(MoveCommand::Right);
+        self.handle_move_command(Move::Right);
         self.mark_redraw(true);
     }
 
@@ -266,7 +263,7 @@ impl View {
 
     fn backspace(&mut self) {
         if self.text_location.line_index != 0 || self.text_location.grapheme_index != 0 {
-            self.move_text_location(MoveCommand::Left);
+            self.handle_move_command(Move::Left);
             self.delete();
         }
     }
@@ -276,8 +273,8 @@ impl View {
         self.mark_redraw(true);
     }
 
-    fn save(&mut self) {
-        let _ = self.buffer.save();
+    pub fn save(&mut self) -> Result<(), Error> {
+        self.buffer.save()
     }
 }
 

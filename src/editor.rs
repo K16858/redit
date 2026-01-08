@@ -11,17 +11,25 @@ use std::{
 use terminal::Terminal;
 mod view;
 use view::View;
-mod editor_command;
-use editor_command::EditorCommand;
+mod command;
 mod message_bar;
 mod status_bar;
 use ui_component::UIComponent;
 mod ui_component;
-use self::{message_bar::MessageBar, terminal::Size};
+use self::{
+    command::{
+        Command::{self, Edit, Move, System},
+        System::{Quit, Resize, Save},
+    },
+    message_bar::MessageBar,
+    terminal::Size,
+};
 use status_bar::StatusBar;
 
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const QUIT_TIMES: u8 = 3;
 
 #[derive(Default)]
 pub struct Editor {
@@ -31,6 +39,7 @@ pub struct Editor {
     terminal_size: Size,
     message_bar: MessageBar,
     title: String,
+    quit_times: u8,
 }
 
 impl Editor {
@@ -80,6 +89,39 @@ impl Editor {
         }
     }
 
+    fn process_command(&mut self, command: Command) {
+        match command {
+            System(Quit) => self.handle_quit(),
+            System(Resize(size)) => self.resize(size),
+            _ => self.reset_quit_times(),
+        }
+
+        match command {
+            System(Quit | Resize(_)) => {}
+            System(Save) => self.handle_save(),
+            Edit(edit_command) => self.view.handle_edit_command(edit_command),
+            Move(move_command) => self.view.handle_move_command(move_command),
+        }
+    }
+
+    fn handle_save(&mut self) {
+        if self.view.save().is_ok() { {} } else { {} }
+    }
+
+    fn handle_quit(&mut self) {
+        if !self.view.get_status().is_modified || self.quit_times + 1 == QUIT_TIMES {
+            self.should_quit = true;
+        } else if self.view.get_status().is_modified {
+            self.quit_times += 1;
+        }
+    }
+
+    fn reset_quit_times(&mut self) {
+        if self.quit_times > 0 {
+            self.quit_times = 0;
+        }
+    }
+
     fn evaluate_event(&mut self, event: Event) {
         let should_process = match &event {
             Event::Key(KeyEvent { kind, .. }) => kind == &KeyEventKind::Press,
@@ -88,14 +130,8 @@ impl Editor {
         };
 
         if should_process {
-            if let Ok(command) = EditorCommand::try_from(event) {
-                if matches!(command, EditorCommand::Quit) {
-                    self.should_quit = true;
-                } else if let EditorCommand::Resize(size) = command {
-                    self.resize(size);
-                } else {
-                    self.view.handle_command(command);
-                }
+            if let Ok(command) = Command::try_from(event) {
+                self.process_command(command);
             }
         }
     }
