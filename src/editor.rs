@@ -27,7 +27,7 @@ use self::{
     command::{
         Command::{self, Edit, Move, System},
         Edit::InsertNewline,
-        Move::{Down, Right},
+        Move::{Down, Left, Right, Up},
         System::{Dismiss, Quit, Resize, Save, Search},
     },
     message_bar::MessageBar,
@@ -175,6 +175,7 @@ impl Editor {
                 self.view.search(&query);
             }
             Move(Right | Down) => self.view.search_next(),
+            Move(Up | Left) => self.view.search_prev(),
             System(Quit | Resize(_) | Search | Save) | Move(_) => {}
         }
     }
