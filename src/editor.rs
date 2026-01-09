@@ -90,16 +90,6 @@ impl Editor {
         Ok(editor)
     }
 
-    pub fn refresh_status(&mut self) {
-        let status = self.view.get_status();
-        let title = format!("{} - {NAME}", status.file_name);
-        self.status_bar.update_status(status);
-
-        if title != self.title && matches!(Terminal::set_title(&title), Ok(())) {
-            self.title = title;
-        }
-    }
-
     pub fn run(&mut self) {
         loop {
             self.refresh_screen();
@@ -120,6 +110,21 @@ impl Editor {
         }
     }
 
+    // =========================================
+    // Event
+    // =========================================
+    fn evaluate_event(&mut self, event: Event) {
+        let should_process = match &event {
+            Event::Key(KeyEvent { kind, .. }) => kind == &KeyEventKind::Press,
+            Event::Resize(_, _) => true,
+            _ => false,
+        };
+
+        if should_process && let Ok(command) = Command::try_from(event) {
+            self.process_command(command);
+        }
+    }
+
     fn process_command(&mut self, command: Command) {
         if let System(Resize(size)) = command {
             self.resize(size);
@@ -133,6 +138,9 @@ impl Editor {
         }
     }
 
+    // =========================================
+    // CommandDispatch
+    // =========================================
     fn process_command_no_prompt(&mut self, command: Command) {
         if matches!(command, System(Quit)) {
             self.handle_quit();
@@ -158,14 +166,6 @@ impl Editor {
         }
     }
 
-    fn handle_save(&mut self) {
-        if self.view.is_file_loaded() {
-            self.save(None);
-        } else {
-            self.set_prompt(PromptType::Save);
-        }
-    }
-
     fn process_command_during_save(&mut self, command: Command) {
         match command {
             System(Quit | Resize(_) | Search | Save) | Move(_) => {} // Not applicable during save, Resize already handled at this stage
@@ -179,6 +179,34 @@ impl Editor {
                 self.set_prompt(PromptType::None);
             }
             Edit(edit_command) => self.command_bar.handle_edit_command(edit_command),
+        }
+    }
+
+    // =========================================
+    // PromptHandling
+    // =========================================
+    fn set_prompt(&mut self, prompt_type: PromptType) {
+        match prompt_type {
+            PromptType::None => self.message_bar.mark_redraw(true), //Ensures the message bar is properly painted during the next redraw cycle
+            PromptType::Save => self.command_bar.set_prompt("Save as: "),
+            PromptType::Search => self.command_bar.set_prompt("Search: "),
+        }
+        self.command_bar.clear_value();
+        self.prompt_type = prompt_type;
+    }
+
+    fn in_prompt(&self) -> bool {
+        !self.prompt_type.is_none()
+    }
+
+    // =========================================
+    // SystemCommands
+    // =========================================
+    fn handle_save(&mut self) {
+        if self.view.is_file_loaded() {
+            self.save(None);
+        } else {
+            self.set_prompt(PromptType::Save);
         }
     }
 
@@ -215,29 +243,16 @@ impl Editor {
         }
     }
 
-    fn set_prompt(&mut self, prompt_type: PromptType) {
-        match prompt_type {
-            PromptType::None => self.message_bar.mark_redraw(true), //Ensures the message bar is properly painted during the next redraw cycle
-            PromptType::Save => self.command_bar.set_prompt("Save as: "),
-            PromptType::Search => self.command_bar.set_prompt("Search: "),
-        }
-        self.command_bar.clear_value();
-        self.prompt_type = prompt_type;
-    }
+    // =========================================
+    // Rendering
+    // =========================================
+    pub fn refresh_status(&mut self) {
+        let status = self.view.get_status();
+        let title = format!("{} - {NAME}", status.file_name);
+        self.status_bar.update_status(status);
 
-    fn in_prompt(&self) -> bool {
-        !self.prompt_type.is_none()
-    }
-
-    fn evaluate_event(&mut self, event: Event) {
-        let should_process = match &event {
-            Event::Key(KeyEvent { kind, .. }) => kind == &KeyEventKind::Press,
-            Event::Resize(_, _) => true,
-            _ => false,
-        };
-
-        if should_process && let Ok(command) = Command::try_from(event) {
-            self.process_command(command);
+        if title != self.title && matches!(Terminal::set_title(&title), Ok(())) {
+            self.title = title;
         }
     }
 
@@ -289,6 +304,9 @@ impl Editor {
         let _ = Terminal::execute();
     }
 
+    // =========================================
+    // Util
+    // =========================================
     fn update_message(&mut self, new_message: &str) {
         self.message_bar.update_message(new_message);
     }
