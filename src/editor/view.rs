@@ -10,15 +10,11 @@ use buffer::Buffer;
 use std::io::Error;
 mod fileinfo;
 use fileinfo::FileInfo;
+mod location;
+use location::Location;
 
 struct SearchInfo {
     prev_location: Location,
-}
-
-#[derive(Copy, Clone, Default)]
-pub struct Location {
-    pub grapheme_index: usize,
-    pub line_index: usize,
 }
 
 #[derive(Default)]
