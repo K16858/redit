@@ -101,15 +101,22 @@ impl Editor {
     }
 
     pub fn run(&mut self) {
-        Terminal::initialize().unwrap();
-        self.handle_args();
-        self.repl();
-    }
-
-    fn handle_args(&mut self) {
-        let args: Vec<String> = env::args().collect();
-        if let Some(file_name) = args.get(1) {
-            let _ = self.view.load(file_name);
+        loop {
+            self.refresh_screen();
+            if self.should_quit {
+                break;
+            }
+            match read() {
+                Ok(event) => self.evaluate_event(event),
+                Err(err) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        panic!("Could not read event: {err:?}");
+                    }
+                }
+            }
+            let status = self.view.get_status();
+            self.status_bar.update_status(status);
         }
     }
 
@@ -284,26 +291,6 @@ impl Editor {
 
     fn update_message(&mut self, new_message: &str) {
         self.message_bar.update_message(new_message);
-    }
-
-    fn repl(&mut self) {
-        loop {
-            self.refresh_screen();
-            if self.should_quit {
-                break;
-            }
-            match read() {
-                Ok(event) => self.evaluate_event(event),
-                Err(err) => {
-                    #[cfg(debug_assertions)]
-                    {
-                        panic!("Could not read event: {err:?}");
-                    }
-                }
-            }
-            let status = self.view.get_status();
-            self.status_bar.update_status(status);
-        }
     }
 }
 
