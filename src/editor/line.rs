@@ -201,12 +201,33 @@ impl Line {
             .map_or(0, |fragment| fragment.start_byte_idx)
     }
 
-    pub fn search(&self, query: &str, from_grapheme_idx: usize) -> Option<usize> {
+    pub fn search_forward(&self, query: &str, from_grapheme_idx: usize) -> Option<usize> {
+        debug_assert!(from_grapheme_idx <= self.grapheme_count());
+        if from_grapheme_idx == self.grapheme_count() {
+            return None;
+        }
         let start_byte_idx = self.grapheme_idx_to_byte_idx(from_grapheme_idx);
         self.string
             .get(start_byte_idx..)
             .and_then(|substr| substr.find(query))
             .map(|byte_idx| self.byte_idx_to_grapheme_idx(byte_idx.saturating_add(start_byte_idx)))
+    }
+
+    pub fn search_backward(&self, query: &str, from_grapheme_idx: usize) -> Option<usize> {
+        debug_assert!(from_grapheme_idx <= self.grapheme_count());
+
+        if from_grapheme_idx == 0 {
+            return None;
+        }
+        let end_byte_index = if from_grapheme_idx == self.grapheme_count() {
+            self.string.len()
+        } else {
+            self.grapheme_idx_to_byte_idx(from_grapheme_idx)
+        };
+        self.string
+            .get(..end_byte_index)
+            .and_then(|substr| substr.match_indices(query).last())
+            .map(|(index, _)| self.byte_idx_to_grapheme_idx(index))
     }
 }
 

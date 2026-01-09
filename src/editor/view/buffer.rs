@@ -1,8 +1,7 @@
+use super::{FileInfo, Line, Location};
 use std::fs::{File, read_to_string};
 use std::io::Error;
 use std::io::Write;
-
-use super::{FileInfo, Line, Location};
 
 #[derive(Default)]
 pub struct Buffer {
@@ -100,22 +99,61 @@ impl Buffer {
         }
     }
 
-    pub fn search(&self, query: &str, from: Location) -> Option<Location> {
-        for (line_index, line) in self.lines.iter().enumerate().skip(from.line_index) {
-            let from_grapheme_index = if line_index == from.line_index {
+    pub fn search_forward(&self, query: &str, from: Location) -> Option<Location> {
+        if query.is_empty() {
+            return None;
+        }
+        let mut is_first = true;
+        for (line_index, line) in self
+            .lines
+            .iter()
+            .enumerate()
+            .cycle()
+            .skip(from.line_index)
+            .take(self.lines.len().saturating_add(1))
+        {
+            let from_grapheme_idx = if is_first {
+                is_first = false;
                 from.grapheme_index
             } else {
                 0
             };
-            if let Some(grapheme_index) = line.search(query, from_grapheme_index) {
+            if let Some(grapheme_index) = line.search_forward(query, from_grapheme_idx) {
                 return Some(Location {
                     grapheme_index,
                     line_index,
                 });
             }
         }
-        for (line_index, line) in self.lines.iter().enumerate().take(from.line_index) {
-            if let Some(grapheme_index) = line.search(query, 0) {
+        None
+    }
+
+    pub fn search_backward(&self, query: &str, from: Location) -> Option<Location> {
+        if query.is_empty() {
+            return None;
+        }
+        let mut is_first = true;
+        for (line_index, line) in self
+            .lines
+            .iter()
+            .enumerate()
+            .rev()
+            .cycle()
+            .skip(
+                self.lines
+                    .len()
+                    .saturating_sub(from.line_index)
+                    .saturating_sub(1),
+            )
+            .take(self.lines.len().saturating_add(1))
+        {
+            let from_grapheme_idx = if is_first {
+                is_first = false;
+                from.grapheme_index
+            } else {
+                line.grapheme_count()
+            };
+            if let Some(grapheme_index) = line.search_backward(query, from_grapheme_idx) {
                 return Some(Location {
                     grapheme_index,
                     line_index,
