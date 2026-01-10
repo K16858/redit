@@ -100,6 +100,29 @@ impl Line {
         }
         let mut result = AnnotatedString::from(&self.string);
 
+        let keywords = ["fn", "let", "mut", "if", "else", "for", "while", "match"];
+        let mut search_start = 0;
+        for keyword in keywords {
+            while let Some(rel_pos) = self.string[search_start..].find(keyword) {
+                let start = search_start + rel_pos;
+                let end = start + keyword.len();
+            
+                let is_word_boundary_before = start == 0 
+                    || !self.string[..start].chars().last().map_or(false, |c| c.is_alphanumeric() || c == '_');
+                let is_word_boundary_after = end >= self.string.len()
+                    || !self.string[end..].chars().next().map_or(false, |c| c.is_alphanumeric() || c == '_');
+                
+                if is_word_boundary_before && is_word_boundary_after {
+                    result.add_annotation(
+                        AnnotationType::Keyword,
+                        start,
+                        end,
+                    );
+                }
+                search_start = start + 1;
+            }
+        }
+
         if let Some(query) = query
             && !query.is_empty()
         {
