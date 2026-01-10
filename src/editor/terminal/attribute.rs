@@ -29,9 +29,9 @@ impl From<AnnotationType> for Attribute {
                     b: 255,
                 }),
                 background: Some(Color::Rgb {
-                    r: 255,
-                    g: 251,
-                    b: 0,
+                    r: 200,
+                    g: 180,
+                    b: 60,
                 }),
             },
         }
