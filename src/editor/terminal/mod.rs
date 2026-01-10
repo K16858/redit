@@ -1,6 +1,12 @@
 use super::{Position, Size};
 use crossterm::cursor::{Hide, MoveTo, Show};
-use crossterm::style::{Attribute, Print};
+mod attribute;
+use super::AnnotatedString;
+use attribute::Attribute;
+use crossterm::style::{
+    Attribute::{Reset, Reverse},
+    Print, ResetColor, SetBackgroundColor, SetForegroundColor,
+};
 use crossterm::terminal::{
     Clear, ClearType, DisableLineWrap, EnableLineWrap, EnterAlternateScreen, LeaveAlternateScreen,
     SetTitle, disable_raw_mode, enable_raw_mode, size,

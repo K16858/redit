@@ -2,14 +2,14 @@ use std::{
     cmp::{max, min},
     fmt::{self, Display},
 };
-pub mod annotationtype;
-pub use annotationtype::AnnotationType;
+pub mod annotation_type;
+pub use annotation_type::AnnotationType;
 mod annotation;
 use annotation::Annotation;
-mod annotatedstringpart;
-use annotatedstringpart::AnnotatedStringPart;
-mod annotatedstringiterator;
-use annotatedstringiterator::AnnotatedStringIterator;
+mod annotated_string_part;
+use annotated_string_part::AnnotatedStringPart;
+mod annotated_string_iterator;
+use annotated_string_iterator::AnnotatedStringIterator;
 
 #[derive(Default, Debug)]
 pub struct AnnotatedString {
