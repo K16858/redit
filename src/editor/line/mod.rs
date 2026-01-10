@@ -1,4 +1,5 @@
 use std::{
+    cmp::min,
     fmt,
     ops::{Deref, Range},
 };
@@ -136,16 +137,12 @@ impl Line {
                 result.replace(fragment.start, self.string.len(), "⋯");
                 continue;
             } else if fragment_start == range.end {
-                result.replace(fragment.start, self.string.len(), "");
+                result.truncate_right_from(fragment.start);
                 continue;
             }
 
             if fragment_end <= range.start {
-                result.replace(
-                    0,
-                    fragment.start.saturating_add(fragment.grapheme.len()),
-                    "",
-                );
+                result.truncate_left_until(fragment.start.saturating_add(fragment.grapheme.len()));
                 break;
             } else if fragment_start < range.start && fragment_end > range.start {
                 result.replace(
@@ -268,20 +265,40 @@ impl Line {
     }
 
     fn find_all(&self, query: &str, range: Range<usize>) -> Vec<(usize, usize)> {
-        let end = range.end;
+        let end = min(range.end, self.string.len());
         let start = range.start;
 
-        self.string.get(start..end).map_or_else(Vec::new, |substr| {
-            substr
-                .match_indices(query)
-                .filter_map(|(relative_start_idx, _)| {
-                    let absolute_start_idx = relative_start_idx.saturating_add(start); //convert their relative indices to absolute indices
+        debug_assert!(start <= end);
+        debug_assert!(start <= self.string.len());
 
-                    self.byte_idx_to_grapheme_idx(absolute_start_idx)
-                        .map(|grapheme_idx| (absolute_start_idx, grapheme_idx))
-                })
-                .collect()
+        self.string.get(start..end).map_or_else(Vec::new, |substr| {
+            let potential_matches: Vec<usize> = substr
+                .match_indices(query)
+                .map(|(relative_start_idx, _)| relative_start_idx.saturating_add(start))
+                .collect();
+            self.match_graphme_clusters(&potential_matches, query)
         })
+    }
+
+    fn match_graphme_clusters(&self, matches: &[usize], query: &str) -> Vec<(usize, usize)> {
+        let grapheme_count = query.graphemes(true).count();
+        matches
+            .iter()
+            .filter_map(|&start| {
+                self.byte_idx_to_grapheme_idx(start)
+                    .and_then(|grapheme_idx| {
+                        self.fragments
+                            .get(grapheme_idx..grapheme_idx.saturating_add(grapheme_count))
+                            .and_then(|fragments| {
+                                let substring = fragments
+                                    .iter()
+                                    .map(|fragment| fragment.grapheme.as_str())
+                                    .collect::<String>();
+                                (substring == query).then_some((start, grapheme_idx))
+                            })
+                    })
+            })
+            .collect()
     }
 }
 

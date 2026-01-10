@@ -33,9 +33,19 @@ impl AnnotatedString {
         });
     }
 
-    pub fn replace(&mut self, start: usize, end: usize, new_string: &str) {
-        debug_assert!(start <= end);
+    pub fn truncate_left_until(&mut self, until: usize) {
+        self.replace(0, until, "");
+    }
 
+    pub fn truncate_right_from(&mut self, from: usize) {
+        self.replace(from, self.string.len(), "");
+    }
+
+    pub fn replace(&mut self, start: usize, end: usize, new_string: &str) {
+        let end = min(end, self.string.len());
+
+        debug_assert!(start <= end);
+        debug_assert!(start <= self.string.len());
         let end = min(end, self.string.len());
         if start > end {
             return;
