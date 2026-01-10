@@ -11,6 +11,8 @@ use text_fragment::TextFragment;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
+use super::{AnnotatedString, AnnotationType};
+
 #[derive(Default, Clone)]
 pub struct Line {
     fragments: Vec<TextFragment>,
@@ -78,32 +80,95 @@ impl Line {
     }
 
     pub fn get_visible_graphemes(&self, range: Range<usize>) -> String {
-        if range.start >= range.end {
-            return String::new();
-        }
-        let mut result = String::new();
-        let mut current_pos = 0;
-        for fragment in &self.fragments {
-            let fragment_end = fragment.rendered_width.saturating_add(current_pos);
-            if current_pos >= range.end {
-                break;
-            }
-            if fragment_end > range.start {
-                if fragment_end > range.end || current_pos < range.start {
-                    result.push('⋯');
-                } else if let Some(char) = fragment.replacement {
-                    result.push(char);
-                } else {
-                    result.push_str(&fragment.grapheme);
-                }
-            }
-            current_pos = fragment_end;
-        }
-        result
+        self.get_annotated_visible_substr(range, None, None)
+            .to_string()
     }
 
     pub fn grapheme_count(&self) -> usize {
         self.fragments.len()
+    }
+
+    pub fn get_annotated_visible_substr(
+        &self,
+        range: Range<usize>,
+        query: Option<&str>,
+        selected_match: Option<usize>,
+    ) -> AnnotatedString {
+        if range.start >= range.end {
+            return AnnotatedString::default();
+        }
+        let mut result = AnnotatedString::from(&self.string);
+
+        if let Some(query) = query {
+            if !query.is_empty() {
+                self.find_all(query, 0..self.string.len()).iter().for_each(
+                    |(start_byte_idx, grapheme_idx)| {
+                        if let Some(selected_match) = selected_match {
+                            if *grapheme_idx == selected_match {
+                                result.add_annotation(
+                                    AnnotationType::SelectedMatch,
+                                    *start_byte_idx,
+                                    start_byte_idx.saturating_add(query.len()),
+                                );
+                                return;
+                            }
+                        }
+                        result.add_annotation(
+                            AnnotationType::Match,
+                            *start_byte_idx,
+                            start_byte_idx.saturating_add(query.len()),
+                        );
+                    },
+                );
+            }
+        }
+
+        let mut fragment_start = self.width();
+        for fragment in self.fragments.iter().rev() {
+            let fragment_end = fragment_start;
+            fragment_start = fragment_start.saturating_sub(fragment.rendered_width.into());
+
+            if fragment_start > range.end {
+                continue;
+            }
+
+            if fragment_start < range.end && fragment_end > range.end {
+                result.replace(fragment.start_byte_idx, self.string.len(), "⋯");
+                continue;
+            } else if fragment_start == range.end {
+                result.replace(fragment.start_byte_idx, self.string.len(), "");
+                continue;
+            }
+
+            if fragment_end <= range.start {
+                result.replace(
+                    0,
+                    fragment
+                        .start_byte_idx
+                        .saturating_add(fragment.grapheme.len()),
+                    "",
+                );
+                break;
+            } else if fragment_start < range.start && fragment_end > range.start {
+                result.replace(
+                    0,
+                    fragment
+                        .start_byte_idx
+                        .saturating_add(fragment.grapheme.len()),
+                    "⋯",
+                );
+                break;
+            }
+
+            if fragment_start >= range.start && fragment_end <= range.end {
+                if let Some(replacement) = fragment.replacement {
+                    let start_byte_idx = fragment.start_byte_idx;
+                    let end_byte_idx = start_byte_idx.saturating_add(fragment.grapheme.len());
+                    result.replace(start_byte_idx, end_byte_idx, &replacement.to_string());
+                }
+            }
+        }
+        result
     }
 
     pub fn width_until(&self, grapheme_idx: usize) -> usize {
@@ -165,16 +230,13 @@ impl Line {
         }
     }
 
-    fn byte_idx_to_grapheme_idx(&self, byte_idx: usize) -> usize {
-        for (grapheme_idx, fragment) in self.fragments.iter().enumerate() {
-            if fragment.start_byte_idx >= byte_idx {
-                return grapheme_idx;
-            }
+    fn byte_idx_to_grapheme_idx(&self, byte_idx: usize) -> Option<usize> {
+        if byte_idx > self.string.len() {
+            return None;
         }
-        #[cfg(debug_assertions)]
-        {
-            panic!("Invalid byte_idx passed to byte_idx_to_grapheme_idx: {byte_idx:?}");
-        }
+        self.fragments
+            .iter()
+            .position(|fragment| fragment.start_byte_idx >= byte_idx)
     }
 
     fn grapheme_idx_to_byte_idx(&self, grapheme_idx: usize) -> usize {
@@ -189,10 +251,9 @@ impl Line {
             return None;
         }
         let start_byte_idx = self.grapheme_idx_to_byte_idx(from_grapheme_idx);
-        self.string
-            .get(start_byte_idx..)
-            .and_then(|substr| substr.find(query))
-            .map(|byte_idx| self.byte_idx_to_grapheme_idx(byte_idx.saturating_add(start_byte_idx)))
+        self.find_all(query, start_byte_idx..self.string.len())
+            .first()
+            .map(|(_, grapheme_idx)| *grapheme_idx)
     }
 
     pub fn search_backward(&self, query: &str, from_grapheme_idx: usize) -> Option<usize> {
@@ -201,15 +262,33 @@ impl Line {
         if from_grapheme_idx == 0 {
             return None;
         }
-        let end_byte_idx = if from_grapheme_idx == self.grapheme_count() {
+        let end_byte_index = if from_grapheme_idx == self.grapheme_count() {
             self.string.len()
         } else {
             self.grapheme_idx_to_byte_idx(from_grapheme_idx)
         };
+        self.find_all(query, 0..end_byte_index)
+            .last()
+            .map(|(_, grapheme_idx)| *grapheme_idx)
+    }
+
+    fn find_all(&self, query: &str, range: Range<usize>) -> Vec<(usize, usize)> {
+        let end_byte_idx = range.end;
+        let start_byte_idx = range.start;
+
         self.string
-            .get(..end_byte_idx)
-            .and_then(|substr| substr.match_indices(query).last())
-            .map(|(idx, _)| self.byte_idx_to_grapheme_idx(idx))
+            .get(start_byte_idx..end_byte_idx)
+            .map_or_else(Vec::new, |substr| {
+                substr
+                    .match_indices(query)
+                    .filter_map(|(relative_start_idx, _)| {
+                        let absolute_start_idx = relative_start_idx.saturating_add(start_byte_idx); //convert their relative indices to absolute indices
+
+                        self.byte_idx_to_grapheme_idx(absolute_start_idx)
+                            .map(|grapheme_idx| (absolute_start_idx, grapheme_idx))
+                    })
+                    .collect()
+            })
     }
 }
 

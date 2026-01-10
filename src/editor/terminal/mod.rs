@@ -88,17 +88,45 @@ impl Terminal {
         Ok(())
     }
 
+    pub fn print_annotated_row(
+        row: usize,
+        annotated_string: &AnnotatedString,
+    ) -> Result<(), Error> {
+        Self::move_caret_to(Position { row, col: 0 })?;
+        Self::clear_line()?;
+        annotated_string
+            .into_iter()
+            .try_for_each(|part| -> Result<(), Error> {
+                if let Some(annotation_type) = part.annotation_type {
+                    let attribute: Attribute = annotation_type.into();
+                    Self::set_attribute(&attribute)?;
+                }
+
+                Self::print(part.string)?;
+                Self::reset_color()?;
+                Ok(())
+            })?;
+        Ok(())
+    }
+
+    fn set_attribute(attribute: &Attribute) -> Result<(), Error> {
+        if let Some(foreground_color) = attribute.foreground {
+            Self::queue_command(SetForegroundColor(foreground_color))?;
+        }
+        if let Some(background_color) = attribute.background {
+            Self::queue_command(SetBackgroundColor(background_color))?;
+        }
+        Ok(())
+    }
+
+    fn reset_color() -> Result<(), Error> {
+        Self::queue_command(ResetColor)?;
+        Ok(())
+    }
+
     pub fn print_inverted_row(row: usize, line_text: &str) -> Result<(), Error> {
         let width = Self::size()?.width;
-        Self::print_row(
-            row,
-            &format!(
-                "{}{:width$.width$}{}",
-                Attribute::Reverse,
-                line_text,
-                Attribute::Reset
-            ),
-        )
+        Self::print_row(row, &format!("{Reverse}{line_text:width$.width$}{Reset}"))
     }
 
     pub fn print(string: &str) -> Result<(), Error> {

@@ -63,7 +63,16 @@ impl View {
             if let Some(line) = self.buffer.lines.get(line_idx) {
                 let left = self.scroll_offset.col;
                 let right = left + width;
-                Self::render_line(draw_row, &line.get_visible_graphemes(left..right))?;
+                let query = self
+                    .search_info
+                    .as_ref()
+                    .and_then(|search_info| search_info.query.as_deref());
+                let selected_match = (self.text_location.line_idx == line_idx && query.is_some())
+                    .then_some(self.text_location.grapheme_idx);
+                Terminal::print_annotated_row(
+                    screen_row,
+                    &line.get_annotated_visible_substr(left..right, query, selected_match),
+                )?;
             } else {
                 Self::render_line(draw_row, "~")?;
             }
@@ -298,6 +307,7 @@ impl View {
 
     pub fn exit_search(&mut self) {
         self.search_info = None;
+        self.mark_redraw(true);
     }
 
     pub fn dismiss_search(&mut self) {
@@ -307,6 +317,7 @@ impl View {
             self.scroll_text_location_into_view();
         }
         self.search_info = None;
+        self.mark_redraw(true);
     }
 
     pub fn search(&mut self, query: &str) {
@@ -342,6 +353,7 @@ impl View {
             self.text_location = location;
             self.center_text_location();
         }
+        self.mark_redraw(true);
     }
 
     pub fn search_next(&mut self) {
@@ -351,7 +363,7 @@ impl View {
 
         let location = Location {
             line_idx: self.text_location.line_idx,
-            grapheme_idx: self.text_location.grapheme_idx.saturating_add(step_right), //Start the new search behind the current match
+            grapheme_idx: self.text_location.grapheme_idx.saturating_add(step_right),
         };
         self.search_in_direction(location, SearchDirection::Forward);
     }

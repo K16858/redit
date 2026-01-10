@@ -4,11 +4,11 @@ pub enum GraphemeWidth {
     Full,
 }
 
-impl GraphemeWidth {
-    pub fn saturating_add(self, other: usize) -> usize {
-        match self {
-            Self::Half => other.saturating_add(1),
-            Self::Full => other.saturating_add(2),
+impl From<GraphemeWidth> for usize {
+    fn from(val: GraphemeWidth) -> Self {
+        match val {
+            GraphemeWidth::Half => 1,
+            GraphemeWidth::Full => 2,
         }
     }
 }
