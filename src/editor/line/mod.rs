@@ -99,12 +99,12 @@ impl Line {
         }
         let mut result = AnnotatedString::from(&self.string);
 
-        if let Some(query) = query {
-            if !query.is_empty() {
+        if let Some(query) = query
+            && !query.is_empty() {
                 self.find_all(query, 0..self.string.len()).iter().for_each(
                     |(start_byte_idx, grapheme_idx)| {
-                        if let Some(selected_match) = selected_match {
-                            if *grapheme_idx == selected_match {
+                        if let Some(selected_match) = selected_match
+                            && *grapheme_idx == selected_match {
                                 result.add_annotation(
                                     AnnotationType::SelectedMatch,
                                     *start_byte_idx,
@@ -112,7 +112,6 @@ impl Line {
                                 );
                                 return;
                             }
-                        }
                         result.add_annotation(
                             AnnotationType::Match,
                             *start_byte_idx,
@@ -121,7 +120,6 @@ impl Line {
                     },
                 );
             }
-        }
 
         let mut fragment_start = self.width();
         for fragment in self.fragments.iter().rev() {
@@ -160,13 +158,12 @@ impl Line {
                 break;
             }
 
-            if fragment_start >= range.start && fragment_end <= range.end {
-                if let Some(replacement) = fragment.replacement {
+            if fragment_start >= range.start && fragment_end <= range.end
+                && let Some(replacement) = fragment.replacement {
                     let start_byte_idx = fragment.start_byte_idx;
                     let end_byte_idx = start_byte_idx.saturating_add(fragment.grapheme.len());
                     result.replace(start_byte_idx, end_byte_idx, &replacement.to_string());
                 }
-            }
         }
         result
     }

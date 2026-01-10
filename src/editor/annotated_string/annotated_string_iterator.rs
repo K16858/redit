@@ -21,14 +21,14 @@ impl<'a> Iterator for AnnotatedStringIterator<'a> {
                 annotation.start_byte_idx <= self.current_idx
                     && annotation.end_byte_idx > self.current_idx
             })
-            .last()
+            .next_back()
         {
             let end_idx = min(annotation.end_byte_idx, self.annotated_string.string.len());
             let start_idx = self.current_idx;
             self.current_idx = end_idx;
             return Some(AnnotatedStringPart {
                 string: &self.annotated_string.string[start_idx..end_idx],
-                annotation_type: Some(annotation.annotation_type),
+                annotation_type: Some(annotation.kind),
             });
         }
         let mut end_idx = self.annotated_string.string.len();

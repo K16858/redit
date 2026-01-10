@@ -32,7 +32,7 @@ impl AnnotatedString {
     ) {
         debug_assert!(start_byte_idx <= end_byte_idx);
         self.annotations.push(Annotation {
-            annotation_type,
+            kind: annotation_type,
             start_byte_idx,
             end_byte_idx,
         });
