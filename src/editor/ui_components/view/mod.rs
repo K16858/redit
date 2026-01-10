@@ -14,13 +14,8 @@ mod searchinfo;
 use searchinfo::SearchInfo;
 mod location;
 use location::Location;
-
-#[derive(Default, Eq, PartialEq, Clone, Copy)]
-pub enum SearchDirection {
-    #[default]
-    Forward,
-    Backward,
-}
+mod search_direction;
+use search_direction::SearchDirection;
 
 #[derive(Default)]
 pub struct View {
