@@ -101,8 +101,8 @@ impl Line {
         let mut result = AnnotatedString::from(&self.string);
 
         let keywords = ["fn", "let", "mut", "if", "else", "for", "while", "match"];
-        let mut search_start = 0;
         for keyword in keywords {
+            let mut search_start = 0;
             while let Some(rel_pos) = self.string[search_start..].find(keyword) {
                 let start = search_start + rel_pos;
                 let end = start + keyword.len();
