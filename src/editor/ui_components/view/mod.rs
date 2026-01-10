@@ -341,7 +341,7 @@ impl View {
         }) {
             self.text_location = location;
             self.center_text_location();
-        };
+        }
     }
 
     pub fn search_next(&mut self) {

@@ -121,7 +121,7 @@ impl Buffer {
             if let Some(grapheme_idx) = line.search_forward(query, from_grapheme_idx) {
                 return Some(Location {
                     grapheme_idx,
-                    line_idx: line_idx,
+                    line_idx,
                 });
             }
         }
@@ -156,7 +156,7 @@ impl Buffer {
             if let Some(grapheme_idx) = line.search_backward(query, from_grapheme_idx) {
                 return Some(Location {
                     grapheme_idx,
-                    line_idx: line_idx,
+                    line_idx,
                 });
             }
         }
