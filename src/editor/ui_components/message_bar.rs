@@ -3,7 +3,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use super::{size::Size, terminal::Terminal, ui_component::UIComponent};
+use super::super::{Size, Terminal};
+use super::UIComponent;
 
 const DEFAULT_DURATION: Duration = Duration::new(5, 0);
 

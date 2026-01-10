@@ -14,25 +14,15 @@ use std::{
     panic::{set_hook, take_hook},
 };
 use terminal::Terminal;
-mod view;
-use view::View;
 mod command;
-mod command_bar;
-mod message_bar;
-mod status_bar;
-use command_bar::CommandBar;
-use ui_component::UIComponent;
-mod ui_component;
-use self::{
-    command::{
-        Command::{self, Edit, Move, System},
-        Edit::InsertNewline,
-        Move::{Down, Left, Right, Up},
-        System::{Dismiss, Quit, Resize, Save, Search},
-    },
-    message_bar::MessageBar,
+use ui_components::{CommandBar, MessageBar, StatusBar, UIComponent, View};
+mod ui_components;
+use self::command::{
+    Command::{self, Edit, Move, System},
+    Edit::InsertNewline,
+    Move::{Down, Left, Right, Up},
+    System::{Dismiss, Quit, Resize, Save, Search},
 };
-use status_bar::StatusBar;
 
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -1,9 +1,9 @@
-use super::{
+use super::super::{
     DocumentStatus, Line, NAME, Position, Size, VERSION,
     command::{Edit, Move},
     terminal::Terminal,
-    ui_component::UIComponent,
 };
+use super::UIComponent;
 use std::cmp::min;
 mod buffer;
 use buffer::Buffer;
