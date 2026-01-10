@@ -61,40 +61,40 @@ impl Buffer {
     }
 
     pub fn insert_char(&mut self, character: char, at: Location) {
-        if at.line_index > self.height() {
+        if at.line_idx > self.height() {
             return;
         }
-        if at.line_index == self.height() {
+        if at.line_idx == self.height() {
             self.lines.push(Line::from(&character.to_string()));
             self.modified = true;
-        } else if let Some(line) = self.lines.get_mut(at.line_index) {
-            line.insert_char(character, at.grapheme_index);
+        } else if let Some(line) = self.lines.get_mut(at.line_idx) {
+            line.insert_char(character, at.grapheme_idx);
             self.modified = true;
         }
     }
 
     pub fn delete(&mut self, at: Location) {
-        if let Some(line) = self.lines.get(at.line_index) {
-            if at.grapheme_index >= line.grapheme_count()
-                && self.height() > at.line_index.saturating_add(1)
+        if let Some(line) = self.lines.get(at.line_idx) {
+            if at.grapheme_idx >= line.grapheme_count()
+                && self.height() > at.line_idx.saturating_add(1)
             {
-                let next_line = self.lines.remove(at.line_index.saturating_add(1));
-                self.lines[at.line_index].append(&next_line);
+                let next_line = self.lines.remove(at.line_idx.saturating_add(1));
+                self.lines[at.line_idx].append(&next_line);
                 self.modified = true;
-            } else if at.grapheme_index < line.grapheme_count() {
-                self.lines[at.line_index].delete(at.grapheme_index);
+            } else if at.grapheme_idx < line.grapheme_count() {
+                self.lines[at.line_idx].delete(at.grapheme_idx);
                 self.modified = true;
             }
         }
     }
 
     pub fn insert_newline(&mut self, at: Location) {
-        if at.line_index == self.height() {
+        if at.line_idx == self.height() {
             self.lines.push(Line::default());
             self.modified = true;
-        } else if let Some(line) = self.lines.get_mut(at.line_index) {
-            let new = line.split(at.grapheme_index);
-            self.lines.insert(at.line_index.saturating_add(1), new);
+        } else if let Some(line) = self.lines.get_mut(at.line_idx) {
+            let new = line.split(at.grapheme_idx);
+            self.lines.insert(at.line_idx.saturating_add(1), new);
             self.modified = true;
         }
     }
@@ -104,24 +104,24 @@ impl Buffer {
             return None;
         }
         let mut is_first = true;
-        for (line_index, line) in self
+        for (line_idx, line) in self
             .lines
             .iter()
             .enumerate()
             .cycle()
-            .skip(from.line_index)
+            .skip(from.line_idx)
             .take(self.lines.len().saturating_add(1))
         {
             let from_grapheme_idx = if is_first {
                 is_first = false;
-                from.grapheme_index
+                from.grapheme_idx
             } else {
                 0
             };
-            if let Some(grapheme_index) = line.search_forward(query, from_grapheme_idx) {
+            if let Some(grapheme_idx) = line.search_forward(query, from_grapheme_idx) {
                 return Some(Location {
-                    grapheme_index,
-                    line_index,
+                    grapheme_idx,
+                    line_idx: line_idx,
                 });
             }
         }
@@ -133,7 +133,7 @@ impl Buffer {
             return None;
         }
         let mut is_first = true;
-        for (line_index, line) in self
+        for (line_idx, line) in self
             .lines
             .iter()
             .enumerate()
@@ -142,21 +142,21 @@ impl Buffer {
             .skip(
                 self.lines
                     .len()
-                    .saturating_sub(from.line_index)
+                    .saturating_sub(from.line_idx)
                     .saturating_sub(1),
             )
             .take(self.lines.len().saturating_add(1))
         {
             let from_grapheme_idx = if is_first {
                 is_first = false;
-                from.grapheme_index
+                from.grapheme_idx
             } else {
                 line.grapheme_count()
             };
-            if let Some(grapheme_index) = line.search_backward(query, from_grapheme_idx) {
+            if let Some(grapheme_idx) = line.search_backward(query, from_grapheme_idx) {
                 return Some(Location {
-                    grapheme_index,
-                    line_index,
+                    grapheme_idx,
+                    line_idx: line_idx,
                 });
             }
         }

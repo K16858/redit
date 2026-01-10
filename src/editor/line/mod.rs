@@ -29,7 +29,7 @@ impl Line {
     fn str_to_fragments(line_str: &str) -> Vec<TextFragment> {
         line_str
             .grapheme_indices(true)
-            .map(|(byte_idex, grapheme)| {
+            .map(|(byte_idx, grapheme)| {
                 let (replacement, rendered_width) = Self::get_replacement_character(grapheme)
                     .map_or_else(
                         || {
@@ -47,7 +47,7 @@ impl Line {
                     grapheme: grapheme.to_string(),
                     rendered_width,
                     replacement,
-                    start_byte_idx: byte_idex,
+                    start_byte_idx: byte_idx,
                 }
             })
             .collect()
@@ -106,10 +106,10 @@ impl Line {
         self.fragments.len()
     }
 
-    pub fn width_until(&self, grapheme_index: usize) -> usize {
+    pub fn width_until(&self, grapheme_idx: usize) -> usize {
         self.fragments
             .iter()
-            .take(grapheme_index)
+            .take(grapheme_idx)
             .map(|fragment| match fragment.rendered_width {
                 GraphemeWidth::Half => 1,
                 GraphemeWidth::Full => 2,
@@ -201,15 +201,15 @@ impl Line {
         if from_grapheme_idx == 0 {
             return None;
         }
-        let end_byte_index = if from_grapheme_idx == self.grapheme_count() {
+        let end_byte_idx = if from_grapheme_idx == self.grapheme_count() {
             self.string.len()
         } else {
             self.grapheme_idx_to_byte_idx(from_grapheme_idx)
         };
         self.string
-            .get(..end_byte_index)
+            .get(..end_byte_idx)
             .and_then(|substr| substr.match_indices(query).last())
-            .map(|(index, _)| self.byte_idx_to_grapheme_idx(index))
+            .map(|(idx, _)| self.byte_idx_to_grapheme_idx(idx))
     }
 }
 
