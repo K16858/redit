@@ -49,7 +49,7 @@ impl Line {
                     grapheme: grapheme.to_string(),
                     rendered_width,
                     replacement,
-                    start_byte_idx: byte_idx,
+                    start: byte_idx,
                 }
             })
             .collect()
@@ -100,26 +100,28 @@ impl Line {
         let mut result = AnnotatedString::from(&self.string);
 
         if let Some(query) = query
-            && !query.is_empty() {
-                self.find_all(query, 0..self.string.len()).iter().for_each(
-                    |(start_byte_idx, grapheme_idx)| {
-                        if let Some(selected_match) = selected_match
-                            && *grapheme_idx == selected_match {
-                                result.add_annotation(
-                                    AnnotationType::SelectedMatch,
-                                    *start_byte_idx,
-                                    start_byte_idx.saturating_add(query.len()),
-                                );
-                                return;
-                            }
+            && !query.is_empty()
+        {
+            self.find_all(query, 0..self.string.len())
+                .iter()
+                .for_each(|(start, grapheme_idx)| {
+                    if let Some(selected_match) = selected_match
+                        && *grapheme_idx == selected_match
+                    {
                         result.add_annotation(
-                            AnnotationType::Match,
-                            *start_byte_idx,
-                            start_byte_idx.saturating_add(query.len()),
+                            AnnotationType::SelectedMatch,
+                            *start,
+                            start.saturating_add(query.len()),
                         );
-                    },
-                );
-            }
+                        return;
+                    }
+                    result.add_annotation(
+                        AnnotationType::Match,
+                        *start,
+                        start.saturating_add(query.len()),
+                    );
+                });
+        }
 
         let mut fragment_start = self.width();
         for fragment in self.fragments.iter().rev() {
@@ -131,39 +133,37 @@ impl Line {
             }
 
             if fragment_start < range.end && fragment_end > range.end {
-                result.replace(fragment.start_byte_idx, self.string.len(), "⋯");
+                result.replace(fragment.start, self.string.len(), "⋯");
                 continue;
             } else if fragment_start == range.end {
-                result.replace(fragment.start_byte_idx, self.string.len(), "");
+                result.replace(fragment.start, self.string.len(), "");
                 continue;
             }
 
             if fragment_end <= range.start {
                 result.replace(
                     0,
-                    fragment
-                        .start_byte_idx
-                        .saturating_add(fragment.grapheme.len()),
+                    fragment.start.saturating_add(fragment.grapheme.len()),
                     "",
                 );
                 break;
             } else if fragment_start < range.start && fragment_end > range.start {
                 result.replace(
                     0,
-                    fragment
-                        .start_byte_idx
-                        .saturating_add(fragment.grapheme.len()),
+                    fragment.start.saturating_add(fragment.grapheme.len()),
                     "⋯",
                 );
                 break;
             }
 
-            if fragment_start >= range.start && fragment_end <= range.end
-                && let Some(replacement) = fragment.replacement {
-                    let start_byte_idx = fragment.start_byte_idx;
-                    let end_byte_idx = start_byte_idx.saturating_add(fragment.grapheme.len());
-                    result.replace(start_byte_idx, end_byte_idx, &replacement.to_string());
-                }
+            if fragment_start >= range.start
+                && fragment_end <= range.end
+                && let Some(replacement) = fragment.replacement
+            {
+                let start = fragment.start;
+                let end = start.saturating_add(fragment.grapheme.len());
+                result.replace(start, end, &replacement.to_string());
+            }
         }
         result
     }
@@ -181,7 +181,7 @@ impl Line {
 
     pub fn insert_char(&mut self, character: char, at: usize) {
         if let Some(fragment) = self.fragments.get(at) {
-            self.string.insert(fragment.start_byte_idx, character);
+            self.string.insert(fragment.start, character);
         } else {
             self.string.push(character);
         }
@@ -203,10 +203,8 @@ impl Line {
 
     pub fn delete(&mut self, at: usize) {
         if let Some(fragment) = self.fragments.get(at) {
-            let start = fragment.start_byte_idx;
-            let end = fragment
-                .start_byte_idx
-                .saturating_add(fragment.grapheme.len());
+            let start = fragment.start;
+            let end = fragment.start.saturating_add(fragment.grapheme.len());
             self.string.drain(start..end);
             self.rebuild_fragments();
         }
@@ -219,7 +217,7 @@ impl Line {
 
     pub fn split(&mut self, at: usize) -> Self {
         if let Some(fragment) = self.fragments.get(at) {
-            let remainder = self.string.split_off(fragment.start_byte_idx);
+            let remainder = self.string.split_off(fragment.start);
             self.rebuild_fragments();
             Self::from(&remainder)
         } else {
@@ -233,13 +231,13 @@ impl Line {
         }
         self.fragments
             .iter()
-            .position(|fragment| fragment.start_byte_idx >= byte_idx)
+            .position(|fragment| fragment.start >= byte_idx)
     }
 
     fn grapheme_idx_to_byte_idx(&self, grapheme_idx: usize) -> usize {
         self.fragments
             .get(grapheme_idx)
-            .map_or(0, |fragment| fragment.start_byte_idx)
+            .map_or(0, |fragment| fragment.start)
     }
 
     pub fn search_forward(&self, query: &str, from_grapheme_idx: usize) -> Option<usize> {
@@ -247,8 +245,8 @@ impl Line {
         if from_grapheme_idx == self.grapheme_count() {
             return None;
         }
-        let start_byte_idx = self.grapheme_idx_to_byte_idx(from_grapheme_idx);
-        self.find_all(query, start_byte_idx..self.string.len())
+        let start = self.grapheme_idx_to_byte_idx(from_grapheme_idx);
+        self.find_all(query, start..self.string.len())
             .first()
             .map(|(_, grapheme_idx)| *grapheme_idx)
     }
@@ -270,22 +268,20 @@ impl Line {
     }
 
     fn find_all(&self, query: &str, range: Range<usize>) -> Vec<(usize, usize)> {
-        let end_byte_idx = range.end;
-        let start_byte_idx = range.start;
+        let end = range.end;
+        let start = range.start;
 
-        self.string
-            .get(start_byte_idx..end_byte_idx)
-            .map_or_else(Vec::new, |substr| {
-                substr
-                    .match_indices(query)
-                    .filter_map(|(relative_start_idx, _)| {
-                        let absolute_start_idx = relative_start_idx.saturating_add(start_byte_idx); //convert their relative indices to absolute indices
+        self.string.get(start..end).map_or_else(Vec::new, |substr| {
+            substr
+                .match_indices(query)
+                .filter_map(|(relative_start_idx, _)| {
+                    let absolute_start_idx = relative_start_idx.saturating_add(start); //convert their relative indices to absolute indices
 
-                        self.byte_idx_to_grapheme_idx(absolute_start_idx)
-                            .map(|grapheme_idx| (absolute_start_idx, grapheme_idx))
-                    })
-                    .collect()
-            })
+                    self.byte_idx_to_grapheme_idx(absolute_start_idx)
+                        .map(|grapheme_idx| (absolute_start_idx, grapheme_idx))
+                })
+                .collect()
+        })
     }
 }
 

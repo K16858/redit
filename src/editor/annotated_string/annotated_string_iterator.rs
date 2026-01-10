@@ -18,12 +18,11 @@ impl<'a> Iterator for AnnotatedStringIterator<'a> {
             .annotations
             .iter()
             .filter(|annotation| {
-                annotation.start_byte_idx <= self.current_idx
-                    && annotation.end_byte_idx > self.current_idx
+                annotation.start <= self.current_idx && annotation.end > self.current_idx
             })
             .next_back()
         {
-            let end_idx = min(annotation.end_byte_idx, self.annotated_string.string.len());
+            let end_idx = min(annotation.end, self.annotated_string.string.len());
             let start_idx = self.current_idx;
             self.current_idx = end_idx;
             return Some(AnnotatedStringPart {
@@ -33,8 +32,8 @@ impl<'a> Iterator for AnnotatedStringIterator<'a> {
         }
         let mut end_idx = self.annotated_string.string.len();
         for annotation in &self.annotated_string.annotations {
-            if annotation.start_byte_idx > self.current_idx && annotation.start_byte_idx < end_idx {
-                end_idx = annotation.start_byte_idx;
+            if annotation.start > self.current_idx && annotation.start < end_idx {
+                end_idx = annotation.start;
             }
         }
         let start_idx = self.current_idx;

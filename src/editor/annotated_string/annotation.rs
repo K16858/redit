@@ -3,6 +3,6 @@ use super::AnnotationType;
 #[derive(Copy, Clone, Debug)]
 pub struct Annotation {
     pub kind: AnnotationType,
-    pub start_byte_idx: usize,
-    pub end_byte_idx: usize,
+    pub start: usize,
+    pub end: usize,
 }
