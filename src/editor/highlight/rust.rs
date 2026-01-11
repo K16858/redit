@@ -173,11 +173,17 @@ impl Highlighter for RustHighlighter {
 
         let type_ranges = find_type_ranges(line);
         for range in &type_ranges {
-            annotations.push(HighlightAnnotation {
-                annotation_type: AnnotationType::Type,
-                start: range.start,
-                end: range.end,
-            });
+            if !is_in_string(range.start) && !is_in_comment(range.start) {
+                let word = &line[range.start..range.end];
+                let is_keyword = keywords.iter().any(|&kw| kw == word);
+                if !is_keyword {
+                    annotations.push(HighlightAnnotation {
+                        annotation_type: AnnotationType::Type,
+                        start: range.start,
+                        end: range.end,
+                    });
+                }
+            }
         }
 
         for range in &comment_ranges {
