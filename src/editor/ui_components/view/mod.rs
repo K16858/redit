@@ -1,6 +1,7 @@
 use super::super::{
     DocumentStatus, Line, NAME, Position, Size, VERSION,
     command::{Edit, Move},
+    highlight::HighlighterRegistry,
     terminal::Terminal,
 };
 use super::UIComponent;
@@ -25,6 +26,7 @@ pub struct View {
     text_location: Location,
     scroll_offset: Position,
     search_info: Option<SearchInfo>,
+    highlighter_registry: HighlighterRegistry,
 }
 
 impl View {
@@ -69,9 +71,21 @@ impl View {
                     .and_then(|search_info| search_info.query.as_deref());
                 let selected_match = (self.text_location.line_idx == line_idx && query.is_some())
                     .then_some(self.text_location.grapheme_idx);
+                let highlighter = self
+                    .buffer
+                    .file_info
+                    .get_path()
+                    .and_then(|p| p.extension())
+                    .and_then(|ext| ext.to_str())
+                    .and_then(|ext| self.highlighter_registry.get_highlighter(Some(ext)));
                 Terminal::print_annotated_row(
                     screen_row,
-                    &line.get_annotated_visible_substr(left..right, query, selected_match),
+                    &line.get_annotated_visible_substr(
+                        left..right,
+                        query,
+                        selected_match,
+                        highlighter,
+                    ),
                 )?;
             } else {
                 Self::render_line(draw_row, "~")?;

@@ -4,6 +4,7 @@ mod size;
 use line::Line;
 mod annotated_string;
 use annotated_string::{AnnotatedString, AnnotationType};
+pub mod highlight;
 mod terminal;
 use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
 use position::Position;

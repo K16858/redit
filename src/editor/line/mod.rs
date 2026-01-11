@@ -12,6 +12,7 @@ use text_fragment::TextFragment;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
+use super::highlight::Highlighter;
 use super::{AnnotatedString, AnnotationType};
 
 #[derive(Default, Clone)]
@@ -60,32 +61,6 @@ impl Line {
         self.fragments = Self::str_to_fragments(&self.string);
     }
 
-    fn find_string_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
-        let mut ranges = Vec::new();
-        let mut in_string = false;
-        let mut string_start = 0;
-        let mut chars = string.char_indices().peekable();
-
-        while let Some((byte_idx, ch)) = chars.next() {
-            if !in_string {
-                if ch == '"' {
-                    in_string = true;
-                    string_start = byte_idx;
-                }
-            } else {
-                if ch == '\\' {
-                    chars.next();
-                    continue;
-                }
-                if ch == '"' {
-                    in_string = false;
-                    ranges.push(string_start..byte_idx + ch.len_utf8());
-                }
-            }
-        }
-        ranges
-    }
-
     fn get_replacement_character(for_str: &str) -> Option<char> {
         let width = for_str.width();
         match for_str {
@@ -107,7 +82,7 @@ impl Line {
     }
 
     pub fn get_visible_graphemes(&self, range: Range<usize>) -> String {
-        self.get_annotated_visible_substr(range, None, None)
+        self.get_annotated_visible_substr(range, None, None, None)
             .to_string()
     }
 
@@ -120,68 +95,17 @@ impl Line {
         range: Range<usize>,
         query: Option<&str>,
         selected_match: Option<usize>,
+        highlighter: Option<&dyn Highlighter>,
     ) -> AnnotatedString {
         if range.start >= range.end {
             return AnnotatedString::default();
         }
+
         let mut result = AnnotatedString::from(&self.string);
-
-        let keywords = ["fn", "let", "mut", "if", "else", "for", "while", "match"];
-        for keyword in keywords {
-            let mut search_start = 0;
-            while let Some(rel_pos) = self.string[search_start..].find(keyword) {
-                let start = search_start + rel_pos;
-                let end = start + keyword.len();
-
-                let is_word_boundary_before = start == 0
-                    || !self.string[..start]
-                        .chars()
-                        .last()
-                        .map_or(false, |c| c.is_alphanumeric() || c == '_');
-                let is_word_boundary_after = end >= self.string.len()
-                    || !self.string[end..]
-                        .chars()
-                        .next()
-                        .map_or(false, |c| c.is_alphanumeric() || c == '_');
-
-                if is_word_boundary_before && is_word_boundary_after {
-                    result.add_annotation(AnnotationType::Keyword, start, end);
-                }
-                search_start = start + 1;
-            }
-        }
-
-        let string_ranges = Self::find_string_ranges(&self.string);
-
-        for range in &string_ranges {
-            result.add_annotation(AnnotationType::String, range.start, range.end);
-        }
-
-        let is_in_string = |byte_idx: usize| -> bool {
-            string_ranges.iter().any(|range| range.contains(&byte_idx))
-        };
-
-        if let Some(comment_start) = self.string.find("//") {
-            if !is_in_string(comment_start) {
-                let comment_end = self.string.len();
-                result.add_annotation(AnnotationType::Comment, comment_start, comment_end);
-            }
-        }
-
-        let mut search_start = 0;
-        while let Some(rel_pos) = self.string[search_start..].find("/*") {
-            let open_byte = search_start + rel_pos;
-            if !is_in_string(open_byte) {
-                if let Some(rel_close_pos) = self.string[open_byte + 2..].find("*/") {
-                    let close_byte = open_byte + 2 + rel_close_pos + 2;
-                    result.add_annotation(AnnotationType::Comment, open_byte, close_byte);
-                    search_start = close_byte;
-                } else {
-                    result.add_annotation(AnnotationType::Comment, open_byte, self.string.len());
-                    break;
-                }
-            } else {
-                search_start = open_byte + 2;
+        if let Some(hl) = highlighter {
+            let highlights = hl.highlight_line(&self.string, 0);
+            for highlight in highlights {
+                result.add_annotation(highlight.annotation_type, highlight.start, highlight.end);
             }
         }
 
