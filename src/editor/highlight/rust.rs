@@ -196,11 +196,24 @@ impl Highlighter for RustHighlighter {
         let number_ranges = find_number_ranges(line);
         for range in &number_ranges {
             if !is_in_string(range.start) && !is_in_comment(range.start) {
-                annotations.push(HighlightAnnotation {
-                    annotation_type: AnnotationType::Number,
-                    start: range.start,
-                    end: range.end,
-                });
+                let is_word_boundary_before = range.start == 0
+                    || !line[..range.start]
+                        .chars()
+                        .last()
+                        .map_or(false, |c| c.is_alphanumeric() || c == '_');
+                let is_word_boundary_after = range.end >= line.len()
+                    || !line[range.end..]
+                        .chars()
+                        .next()
+                        .map_or(false, |c| c.is_alphanumeric() || c == '_');
+
+                if is_word_boundary_before && is_word_boundary_after {
+                    annotations.push(HighlightAnnotation {
+                        annotation_type: AnnotationType::Number,
+                        start: range.start,
+                        end: range.end,
+                    });
+                }
             }
         }
 
