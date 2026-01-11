@@ -33,21 +33,31 @@ fn find_number_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
     let mut ranges = Vec::new();
     let mut in_number = false;
     let mut number_start = 0;
+    let mut has_dot = false;
     let mut chars = string.char_indices().peekable();
 
     while let Some((byte_idx, ch)) = chars.next() {
         if !in_number {
-            if ch.is_digit(10) {
+            if ch.is_ascii_digit() {
                 in_number = true;
                 number_start = byte_idx;
+                has_dot = false;
             }
         } else {
-            if !ch.is_digit(10) {
+            if ch.is_ascii_digit() {
+            } else if ch == '.' && !has_dot {
+                has_dot = true;
+            } else {
                 in_number = false;
                 ranges.push(number_start..byte_idx);
             }
         }
     }
+
+    if in_number {
+        ranges.push(number_start..string.len());
+    }
+
     ranges
 }
 
@@ -93,53 +103,53 @@ impl Highlighter for RustHighlighter {
             });
         }
 
-        let number_ranges = find_number_ranges(line);
-        for range in &number_ranges {
-            annotations.push(HighlightAnnotation {
-                annotation_type: AnnotationType::Number,
-                start: range.start,
-                end: range.end,
-            });
-        }
-
         let is_in_string = |byte_idx: usize| -> bool {
             string_ranges.iter().any(|range| range.contains(&byte_idx))
         };
 
+        let mut comment_ranges = Vec::new();
         if let Some(comment_start) = line.find("//") {
             if !is_in_string(comment_start) {
-                let comment_end = line.len();
-                annotations.push(HighlightAnnotation {
-                    annotation_type: AnnotationType::Comment,
-                    start: comment_start,
-                    end: comment_end,
-                });
+                comment_ranges.push(comment_start..line.len());
             }
         }
-
         let mut search_start = 0;
         while let Some(rel_pos) = line[search_start..].find("/*") {
             let open_byte = search_start + rel_pos;
             if !is_in_string(open_byte) {
                 if let Some(rel_close_pos) = line[open_byte + 2..].find("*/") {
                     let close_byte = open_byte + 2 + rel_close_pos + 2;
-                    annotations.push(HighlightAnnotation {
-                        annotation_type: AnnotationType::Comment,
-                        start: open_byte,
-                        end: close_byte,
-                    });
+                    comment_ranges.push(open_byte..close_byte);
                     search_start = close_byte;
                 } else {
-                    annotations.push(HighlightAnnotation {
-                        annotation_type: AnnotationType::Comment,
-                        start: open_byte,
-                        end: line.len(),
-                    });
+                    comment_ranges.push(open_byte..line.len());
                     break;
                 }
             } else {
                 search_start = open_byte + 2;
             }
+        }
+        let is_in_comment = |byte_idx: usize| -> bool {
+            comment_ranges.iter().any(|range| range.contains(&byte_idx))
+        };
+
+        let number_ranges = find_number_ranges(line);
+        for range in &number_ranges {
+            if !is_in_string(range.start) && !is_in_comment(range.start) {
+                annotations.push(HighlightAnnotation {
+                    annotation_type: AnnotationType::Number,
+                    start: range.start,
+                    end: range.end,
+                });
+            }
+        }
+
+        for range in &comment_ranges {
+            annotations.push(HighlightAnnotation {
+                annotation_type: AnnotationType::Comment,
+                start: range.start,
+                end: range.end,
+            });
         }
 
         annotations
