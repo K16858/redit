@@ -44,9 +44,9 @@ impl From<AnnotationType> for Attribute {
             },
             AnnotationType::Number => Self {
                 foreground: Some(Color::Rgb {
-                    r: 206,
-                    g: 145,
-                    b: 120,
+                    r: 181,
+                    g: 206,
+                    b: 168,
                 }),
                 background: None,
             },
