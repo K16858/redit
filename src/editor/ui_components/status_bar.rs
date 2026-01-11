@@ -33,9 +33,15 @@ impl UIComponent for StatusBar {
     fn draw(&mut self, origin_row: usize) -> Result<(), Error> {
         let line_count = self.current_status.line_count_to_string();
         let modified_indicator = self.current_status.modified_indicator_to_string();
+        let language_indicator = self
+            .current_status
+            .language_name
+            .as_ref()
+            .map(|lang| format!(" ({lang})"))
+            .unwrap_or_default();
 
         let beginning = format!(
-            "{} - {line_count} {modified_indicator}",
+            "{}{language_indicator} - {line_count} {modified_indicator}",
             self.current_status.file_name
         );
 

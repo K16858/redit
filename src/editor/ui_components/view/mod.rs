@@ -31,11 +31,20 @@ pub struct View {
 
 impl View {
     pub fn get_status(&self) -> DocumentStatus {
+        let language_name = self
+            .buffer
+            .file_info
+            .get_path()
+            .and_then(|p| p.extension())
+            .and_then(|ext| ext.to_str())
+            .and_then(|ext| self.highlighter_registry.get_highlighter(Some(ext)))
+            .map(|h| h.language_name().to_string());
         DocumentStatus {
             total_lines: self.buffer.height(),
             current_line_idx: self.text_location.line_idx,
             file_name: format!("{}", self.buffer.file_info),
             is_modified: self.buffer.modified,
+            language_name,
         }
     }
 
