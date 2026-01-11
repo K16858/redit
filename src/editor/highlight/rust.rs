@@ -1,5 +1,6 @@
-use super::{HighlightAnnotation, Highlighter};
+use super::Highlighter;
 use crate::editor::annotated_string::AnnotationType;
+use crate::editor::highlight::{HighlightAnnotation, HighlightState};
 
 pub struct RustHighlighter;
 
@@ -152,10 +153,9 @@ impl Highlighter for RustHighlighter {
         &self,
         line: &str,
         _line_idx: usize,
-        in_block_comment: bool,
-    ) -> (Vec<HighlightAnnotation>, bool) {
+        mut state: HighlightState,
+    ) -> (Vec<HighlightAnnotation>, HighlightState) {
         let mut annotations = Vec::new();
-        let mut still_in_block_comment = in_block_comment;
 
         let keywords = ["fn", "let", "mut", "if", "else", "for", "while", "match"];
         for keyword in keywords {
@@ -200,11 +200,11 @@ impl Highlighter for RustHighlighter {
         };
 
         let mut comment_ranges = Vec::new();
-        if still_in_block_comment {
+        if state.in_block_comment {
             if let Some(close_pos) = line.find("*/") {
                 let close_byte = close_pos + 2;
                 comment_ranges.push(0..close_byte);
-                still_in_block_comment = false;
+                state.in_block_comment = false;
             } else {
                 comment_ranges.push(0..line.len());
             }
@@ -215,7 +215,7 @@ impl Highlighter for RustHighlighter {
                 }
             }
         }
-        let mut search_start = if still_in_block_comment {
+        let mut search_start = if state.in_block_comment {
             line.len()
         } else {
             0
@@ -229,7 +229,7 @@ impl Highlighter for RustHighlighter {
                     search_start = close_byte;
                 } else {
                     comment_ranges.push(open_byte..line.len());
-                    still_in_block_comment = true;
+                    state.in_block_comment = true;
                     break;
                 }
             } else {
@@ -320,16 +320,12 @@ impl Highlighter for RustHighlighter {
             });
         }
 
-        let mut paren_level: usize = 0;
-        let mut brace_level: usize = 0;
-        let mut bracket_level: usize = 0;
-
         for (byte_idx, ch) in line.char_indices() {
             if !is_in_string(byte_idx) && !is_in_comment(byte_idx) {
                 let bracket_type = match ch {
                     '(' => {
-                        let level = (paren_level + 0) % 4;
-                        paren_level += 1;
+                        let level = (state.paren_level + 0) % 4;
+                        state.paren_level += 1;
                         Some(match level {
                             0 => AnnotationType::Bracket0,
                             1 => AnnotationType::Bracket1,
@@ -339,8 +335,8 @@ impl Highlighter for RustHighlighter {
                         })
                     }
                     ')' => {
-                        paren_level = paren_level.saturating_sub(1);
-                        let level = (paren_level + 0) % 4;
+                        state.paren_level = state.paren_level.saturating_sub(1);
+                        let level = (state.paren_level + 0) % 4;
                         Some(match level {
                             0 => AnnotationType::Bracket0,
                             1 => AnnotationType::Bracket1,
@@ -350,8 +346,8 @@ impl Highlighter for RustHighlighter {
                         })
                     }
                     '{' => {
-                        let level = (brace_level + 1) % 4;
-                        brace_level += 1;
+                        let level = (state.brace_level + 1) % 4;
+                        state.brace_level += 1;
                         Some(match level {
                             0 => AnnotationType::Bracket0,
                             1 => AnnotationType::Bracket1,
@@ -361,8 +357,8 @@ impl Highlighter for RustHighlighter {
                         })
                     }
                     '}' => {
-                        brace_level = brace_level.saturating_sub(1);
-                        let level = (brace_level + 1) % 4;
+                        state.brace_level = state.brace_level.saturating_sub(1);
+                        let level = (state.brace_level + 1) % 4;
                         Some(match level {
                             0 => AnnotationType::Bracket0,
                             1 => AnnotationType::Bracket1,
@@ -372,8 +368,8 @@ impl Highlighter for RustHighlighter {
                         })
                     }
                     '[' => {
-                        let level = (bracket_level + 2) % 4;
-                        bracket_level += 1;
+                        let level = (state.bracket_level + 2) % 4;
+                        state.bracket_level += 1;
                         Some(match level {
                             0 => AnnotationType::Bracket0,
                             1 => AnnotationType::Bracket1,
@@ -383,8 +379,8 @@ impl Highlighter for RustHighlighter {
                         })
                     }
                     ']' => {
-                        bracket_level = bracket_level.saturating_sub(1);
-                        let level = (bracket_level + 2) % 4;
+                        state.bracket_level = state.bracket_level.saturating_sub(1);
+                        let level = (state.bracket_level + 2) % 4;
                         Some(match level {
                             0 => AnnotationType::Bracket0,
                             1 => AnnotationType::Bracket1,
@@ -406,7 +402,7 @@ impl Highlighter for RustHighlighter {
             }
         }
 
-        (annotations, still_in_block_comment)
+        (annotations, state)
     }
 
     fn language_name(&self) -> &str {

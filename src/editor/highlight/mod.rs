@@ -1,5 +1,5 @@
 pub mod highlighter;
-pub use highlighter::{HighlightAnnotation, Highlighter};
+pub use highlighter::{HighlightAnnotation, HighlightState, Highlighter};
 
 pub mod rust;
 

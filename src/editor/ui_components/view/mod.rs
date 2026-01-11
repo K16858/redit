@@ -1,7 +1,7 @@
 use super::super::{
     DocumentStatus, Line, NAME, Position, Size, VERSION,
     command::{Edit, Move},
-    highlight::HighlighterRegistry,
+    highlight::{HighlightState, HighlighterRegistry},
     terminal::Terminal,
 };
 use super::UIComponent;
@@ -67,7 +67,23 @@ impl View {
         let Size { height, width } = self.size;
         let top = self.scroll_offset.row;
 
-        let mut in_block_comment = false;
+        let highlighter = self
+            .buffer
+            .file_info
+            .get_path()
+            .and_then(|p| p.extension())
+            .and_then(|ext| ext.to_str())
+            .and_then(|ext| self.highlighter_registry.get_highlighter(Some(ext)));
+
+        let mut state = HighlightState::default();
+        if let Some(hl) = highlighter {
+            for line_idx in 0..top {
+                if let Some(line) = self.buffer.lines.get(line_idx) {
+                    let (_, new_state) = hl.highlight_line(line, line_idx, state);
+                    state = new_state;
+                }
+            }
+        }
 
         for screen_row in 0..height {
             let line_idx = top + screen_row;
@@ -82,25 +98,18 @@ impl View {
                     .and_then(|search_info| search_info.query.as_deref());
                 let selected_match = (self.text_location.line_idx == line_idx && query.is_some())
                     .then_some(self.text_location.grapheme_idx);
-                let highlighter = self
-                    .buffer
-                    .file_info
-                    .get_path()
-                    .and_then(|p| p.extension())
-                    .and_then(|ext| ext.to_str())
-                    .and_then(|ext| self.highlighter_registry.get_highlighter(Some(ext)));
                 let (annotated_string, new_state) = line.get_annotated_visible_substr(
                     left..right,
                     query,
                     selected_match,
                     highlighter,
-                    in_block_comment,
+                    state,
                 );
-                in_block_comment = new_state;
+                state = new_state;
                 Terminal::print_annotated_row(screen_row, &annotated_string)?;
             } else {
                 Self::render_line(draw_row, "~")?;
-                in_block_comment = false;
+                state = HighlightState::default();
             }
         }
         Ok(())

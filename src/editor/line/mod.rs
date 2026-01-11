@@ -14,6 +14,7 @@ use unicode_width::UnicodeWidthStr;
 
 use super::highlight::Highlighter;
 use super::{AnnotatedString, AnnotationType};
+use crate::editor::highlight::HighlightState;
 
 #[derive(Default, Clone)]
 pub struct Line {
@@ -82,7 +83,7 @@ impl Line {
     }
 
     pub fn get_visible_graphemes(&self, range: Range<usize>) -> String {
-        self.get_annotated_visible_substr(range, None, None, None, false)
+        self.get_annotated_visible_substr(range, None, None, None, HighlightState::default())
             .0
             .to_string()
     }
@@ -97,17 +98,17 @@ impl Line {
         query: Option<&str>,
         selected_match: Option<usize>,
         highlighter: Option<&dyn Highlighter>,
-        in_block_comment: bool,
-    ) -> (AnnotatedString, bool) {
+        state: HighlightState,
+    ) -> (AnnotatedString, HighlightState) {
         if range.start >= range.end {
-            return (AnnotatedString::default(), in_block_comment);
+            return (AnnotatedString::default(), state);
         }
 
         let mut result = AnnotatedString::from(&self.string);
-        let mut still_in_block_comment = in_block_comment;
+        let mut new_state = state;
         if let Some(hl) = highlighter {
-            let (highlights, new_state) = hl.highlight_line(&self.string, 0, in_block_comment);
-            still_in_block_comment = new_state;
+            let (highlights, updated_state) = hl.highlight_line(&self.string, 0, state);
+            new_state = updated_state;
             for highlight in highlights {
                 result.add_annotation(highlight.annotation_type, highlight.start, highlight.end);
             }
@@ -175,7 +176,7 @@ impl Line {
                 result.replace(start, end, &replacement.to_string());
             }
         }
-        (result, still_in_block_comment)
+        (result, new_state)
     }
 
     pub fn width_until(&self, grapheme_idx: usize) -> usize {
