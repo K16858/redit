@@ -4,6 +4,7 @@ pub enum AnnotationType {
     SelectedMatch,
     Keyword,
     Number,
+    Type,
     String,
     Comment,
 }
