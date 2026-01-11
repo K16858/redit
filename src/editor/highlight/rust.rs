@@ -31,31 +31,90 @@ fn find_string_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
 
 fn find_number_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
     let mut ranges = Vec::new();
-    let mut in_number = false;
-    let mut number_start = 0;
-    let mut has_dot = false;
-    let mut chars = string.char_indices().peekable();
+    let mut i = 0;
+    let chars: Vec<_> = string.char_indices().collect();
 
-    while let Some((byte_idx, ch)) = chars.next() {
-        if !in_number {
-            if ch.is_ascii_digit() {
-                in_number = true;
-                number_start = byte_idx;
-                has_dot = false;
-            }
-        } else {
-            if ch.is_ascii_digit() {
-            } else if ch == '.' && !has_dot {
-                has_dot = true;
-            } else {
-                in_number = false;
-                ranges.push(number_start..byte_idx);
+    while i < chars.len() {
+        let (byte_idx, ch) = chars[i];
+
+        if ch == '0' && i + 1 < chars.len() {
+            let next_ch = chars[i + 1].1;
+            if next_ch == 'x' || next_ch == 'X' {
+                let start = byte_idx;
+                let mut j = i + 2;
+                while j < chars.len() {
+                    let digit_ch = chars[j].1;
+                    if digit_ch.is_ascii_hexdigit() {
+                        j += 1;
+                    } else {
+                        break;
+                    }
+                }
+                if j > i + 2 {
+                    ranges.push(start..chars[j].0);
+                }
+                i = j;
+                continue;
+            } else if next_ch == 'o' || next_ch == 'O' {
+                let start = byte_idx;
+                let mut j = i + 2;
+                while j < chars.len() {
+                    let digit_ch = chars[j].1;
+                    if digit_ch >= '0' && digit_ch <= '7' {
+                        j += 1;
+                    } else {
+                        break;
+                    }
+                }
+                if j > i + 2 {
+                    ranges.push(start..chars[j].0);
+                }
+                i = j;
+                continue;
+            } else if next_ch == 'b' || next_ch == 'B' {
+                let start = byte_idx;
+                let mut j = i + 2;
+                while j < chars.len() {
+                    let digit_ch = chars[j].1;
+                    if digit_ch == '0' || digit_ch == '1' {
+                        j += 1;
+                    } else {
+                        break;
+                    }
+                }
+                if j > i + 2 {
+                    ranges.push(start..chars[j].0);
+                }
+                i = j;
+                continue;
             }
         }
-    }
 
-    if in_number {
-        ranges.push(number_start..string.len());
+        if ch.is_ascii_digit() {
+            let start = byte_idx;
+            let mut j = i;
+            let mut has_dot = false;
+
+            while j < chars.len() {
+                let digit_ch = chars[j].1;
+                if digit_ch.is_ascii_digit() {
+                    j += 1;
+                } else if digit_ch == '.'
+                    && !has_dot
+                    && j + 1 < chars.len()
+                    && chars[j + 1].1.is_ascii_digit()
+                {
+                    has_dot = true;
+                    j += 1;
+                } else {
+                    break;
+                }
+            }
+            ranges.push(start..chars[j].0);
+            i = j;
+        } else {
+            i += 1;
+        }
     }
 
     ranges
