@@ -148,8 +148,14 @@ fn find_type_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
 }
 
 impl Highlighter for RustHighlighter {
-    fn highlight_line(&self, line: &str, _line_idx: usize) -> Vec<HighlightAnnotation> {
+    fn highlight_line(
+        &self,
+        line: &str,
+        _line_idx: usize,
+        in_block_comment: bool,
+    ) -> (Vec<HighlightAnnotation>, bool) {
         let mut annotations = Vec::new();
+        let mut still_in_block_comment = in_block_comment;
 
         let keywords = ["fn", "let", "mut", "if", "else", "for", "while", "match"];
         for keyword in keywords {
@@ -194,12 +200,26 @@ impl Highlighter for RustHighlighter {
         };
 
         let mut comment_ranges = Vec::new();
-        if let Some(comment_start) = line.find("//") {
-            if !is_in_string(comment_start) {
-                comment_ranges.push(comment_start..line.len());
+        if still_in_block_comment {
+            if let Some(close_pos) = line.find("*/") {
+                let close_byte = close_pos + 2;
+                comment_ranges.push(0..close_byte);
+                still_in_block_comment = false;
+            } else {
+                comment_ranges.push(0..line.len());
+            }
+        } else {
+            if let Some(comment_start) = line.find("//") {
+                if !is_in_string(comment_start) {
+                    comment_ranges.push(comment_start..line.len());
+                }
             }
         }
-        let mut search_start = 0;
+        let mut search_start = if still_in_block_comment {
+            line.len()
+        } else {
+            0
+        };
         while let Some(rel_pos) = line[search_start..].find("/*") {
             let open_byte = search_start + rel_pos;
             if !is_in_string(open_byte) {
@@ -209,6 +229,7 @@ impl Highlighter for RustHighlighter {
                     search_start = close_byte;
                 } else {
                     comment_ranges.push(open_byte..line.len());
+                    still_in_block_comment = true;
                     break;
                 }
             } else {
@@ -385,7 +406,7 @@ impl Highlighter for RustHighlighter {
             }
         }
 
-        annotations
+        (annotations, still_in_block_comment)
     }
 
     fn language_name(&self) -> &str {

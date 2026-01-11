@@ -67,6 +67,8 @@ impl View {
         let Size { height, width } = self.size;
         let top = self.scroll_offset.row;
 
+        let mut in_block_comment = false;
+
         for screen_row in 0..height {
             let line_idx = top + screen_row;
             let draw_row = origin_y + screen_row;
@@ -87,17 +89,18 @@ impl View {
                     .and_then(|p| p.extension())
                     .and_then(|ext| ext.to_str())
                     .and_then(|ext| self.highlighter_registry.get_highlighter(Some(ext)));
-                Terminal::print_annotated_row(
-                    screen_row,
-                    &line.get_annotated_visible_substr(
-                        left..right,
-                        query,
-                        selected_match,
-                        highlighter,
-                    ),
-                )?;
+                let (annotated_string, new_state) = line.get_annotated_visible_substr(
+                    left..right,
+                    query,
+                    selected_match,
+                    highlighter,
+                    in_block_comment,
+                );
+                in_block_comment = new_state;
+                Terminal::print_annotated_row(screen_row, &annotated_string)?;
             } else {
                 Self::render_line(draw_row, "~")?;
+                in_block_comment = false;
             }
         }
         Ok(())

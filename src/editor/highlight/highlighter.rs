@@ -7,6 +7,11 @@ pub struct HighlightAnnotation {
 }
 
 pub trait Highlighter: Send + Sync {
-    fn highlight_line(&self, line: &str, line_idx: usize) -> Vec<HighlightAnnotation>;
+    fn highlight_line(
+        &self,
+        line: &str,
+        line_idx: usize,
+        in_block_comment: bool,
+    ) -> (Vec<HighlightAnnotation>, bool);
     fn language_name(&self) -> &str;
 }

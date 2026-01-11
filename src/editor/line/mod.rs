@@ -82,7 +82,8 @@ impl Line {
     }
 
     pub fn get_visible_graphemes(&self, range: Range<usize>) -> String {
-        self.get_annotated_visible_substr(range, None, None, None)
+        self.get_annotated_visible_substr(range, None, None, None, false)
+            .0
             .to_string()
     }
 
@@ -96,14 +97,17 @@ impl Line {
         query: Option<&str>,
         selected_match: Option<usize>,
         highlighter: Option<&dyn Highlighter>,
-    ) -> AnnotatedString {
+        in_block_comment: bool,
+    ) -> (AnnotatedString, bool) {
         if range.start >= range.end {
-            return AnnotatedString::default();
+            return (AnnotatedString::default(), in_block_comment);
         }
 
         let mut result = AnnotatedString::from(&self.string);
+        let mut still_in_block_comment = in_block_comment;
         if let Some(hl) = highlighter {
-            let highlights = hl.highlight_line(&self.string, 0);
+            let (highlights, new_state) = hl.highlight_line(&self.string, 0, in_block_comment);
+            still_in_block_comment = new_state;
             for highlight in highlights {
                 result.add_annotation(highlight.annotation_type, highlight.start, highlight.end);
             }
@@ -171,7 +175,7 @@ impl Line {
                 result.replace(start, end, &replacement.to_string());
             }
         }
-        result
+        (result, still_in_block_comment)
     }
 
     pub fn width_until(&self, grapheme_idx: usize) -> usize {
