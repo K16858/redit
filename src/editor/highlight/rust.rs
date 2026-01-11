@@ -299,6 +299,92 @@ impl Highlighter for RustHighlighter {
             });
         }
 
+        let mut paren_level: usize = 0;
+        let mut brace_level: usize = 0;
+        let mut bracket_level: usize = 0;
+
+        for (byte_idx, ch) in line.char_indices() {
+            if !is_in_string(byte_idx) && !is_in_comment(byte_idx) {
+                let bracket_type = match ch {
+                    '(' => {
+                        let level = (paren_level + 0) % 4;
+                        paren_level += 1;
+                        Some(match level {
+                            0 => AnnotationType::Bracket0,
+                            1 => AnnotationType::Bracket1,
+                            2 => AnnotationType::Bracket2,
+                            3 => AnnotationType::Bracket3,
+                            _ => unreachable!(),
+                        })
+                    }
+                    ')' => {
+                        paren_level = paren_level.saturating_sub(1);
+                        let level = (paren_level + 0) % 4;
+                        Some(match level {
+                            0 => AnnotationType::Bracket0,
+                            1 => AnnotationType::Bracket1,
+                            2 => AnnotationType::Bracket2,
+                            3 => AnnotationType::Bracket3,
+                            _ => unreachable!(),
+                        })
+                    }
+                    '{' => {
+                        let level = (brace_level + 1) % 4;
+                        brace_level += 1;
+                        Some(match level {
+                            0 => AnnotationType::Bracket0,
+                            1 => AnnotationType::Bracket1,
+                            2 => AnnotationType::Bracket2,
+                            3 => AnnotationType::Bracket3,
+                            _ => unreachable!(),
+                        })
+                    }
+                    '}' => {
+                        brace_level = brace_level.saturating_sub(1);
+                        let level = (brace_level + 1) % 4;
+                        Some(match level {
+                            0 => AnnotationType::Bracket0,
+                            1 => AnnotationType::Bracket1,
+                            2 => AnnotationType::Bracket2,
+                            3 => AnnotationType::Bracket3,
+                            _ => unreachable!(),
+                        })
+                    }
+                    '[' => {
+                        let level = (bracket_level + 2) % 4;
+                        bracket_level += 1;
+                        Some(match level {
+                            0 => AnnotationType::Bracket0,
+                            1 => AnnotationType::Bracket1,
+                            2 => AnnotationType::Bracket2,
+                            3 => AnnotationType::Bracket3,
+                            _ => unreachable!(),
+                        })
+                    }
+                    ']' => {
+                        bracket_level = bracket_level.saturating_sub(1);
+                        let level = (bracket_level + 2) % 4;
+                        Some(match level {
+                            0 => AnnotationType::Bracket0,
+                            1 => AnnotationType::Bracket1,
+                            2 => AnnotationType::Bracket2,
+                            3 => AnnotationType::Bracket3,
+                            _ => unreachable!(),
+                        })
+                    }
+                    _ => None,
+                };
+
+                if let Some(annotation_type) = bracket_type {
+                    annotations.push(HighlightAnnotation {
+                        annotation_type,
+                        start: byte_idx,
+                        end: byte_idx + ch.len_utf8(),
+                    });
+                }
+            }
+        }
+
         annotations
     }
 

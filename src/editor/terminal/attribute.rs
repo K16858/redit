@@ -82,6 +82,38 @@ impl From<AnnotationType> for Attribute {
                 }),
                 background: None,
             },
+            AnnotationType::Bracket0 => Self {
+                foreground: Some(Color::Rgb {
+                    r: 128,
+                    g: 128,
+                    b: 128,
+                }),
+                background: None,
+            },
+            AnnotationType::Bracket1 => Self {
+                foreground: Some(Color::Rgb {
+                    r: 100,
+                    g: 150,
+                    b: 200,
+                }),
+                background: None,
+            },
+            AnnotationType::Bracket2 => Self {
+                foreground: Some(Color::Rgb {
+                    r: 150,
+                    g: 100,
+                    b: 200,
+                }),
+                background: None,
+            },
+            AnnotationType::Bracket3 => Self {
+                foreground: Some(Color::Rgb {
+                    r: 100,
+                    g: 200,
+                    b: 150,
+                }),
+                background: None,
+            },
         }
     }
 }

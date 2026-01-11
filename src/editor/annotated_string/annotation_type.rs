@@ -8,4 +8,8 @@ pub enum AnnotationType {
     PrimitiveType,
     String,
     Comment,
+    Bracket0,
+    Bracket1,
+    Bracket2,
+    Bracket3,
 }
