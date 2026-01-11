@@ -60,6 +60,32 @@ impl Line {
         self.fragments = Self::str_to_fragments(&self.string);
     }
 
+    fn find_string_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
+        let mut ranges = Vec::new();
+        let mut in_string = false;
+        let mut string_start = 0;
+        let mut chars = string.char_indices().peekable();
+
+        while let Some((byte_idx, ch)) = chars.next() {
+            if !in_string {
+                if ch == '"' {
+                    in_string = true;
+                    string_start = byte_idx;
+                }
+            } else {
+                if ch == '\\' {
+                    chars.next();
+                    continue;
+                }
+                if ch == '"' {
+                    in_string = false;
+                    ranges.push(string_start..byte_idx + ch.len_utf8());
+                }
+            }
+        }
+        ranges
+    }
+
     fn get_replacement_character(for_str: &str) -> Option<char> {
         let width = for_str.width();
         match for_str {
@@ -125,53 +151,10 @@ impl Line {
             }
         }
 
-        let mut in_string = false;
-        let mut string_start = 0;
-        let mut chars = self.string.char_indices().peekable();
+        let string_ranges = Self::find_string_ranges(&self.string);
 
-        while let Some((byte_idx, ch)) = chars.next() {
-            if !in_string {
-                if ch == '"' {
-                    in_string = true;
-                    string_start = byte_idx;
-                }
-            } else {
-                if ch == '\\' {
-                    chars.next();
-                    continue;
-                }
-                if ch == '"' {
-                    in_string = false;
-                    result.add_annotation(
-                        AnnotationType::String,
-                        string_start,
-                        byte_idx + ch.len_utf8(),
-                    );
-                }
-            }
-        }
-
-        let mut string_ranges = Vec::new();
-        let mut in_string = false;
-        let mut string_start = 0;
-        let mut chars = self.string.char_indices().peekable();
-
-        while let Some((byte_idx, ch)) = chars.next() {
-            if !in_string {
-                if ch == '"' {
-                    in_string = true;
-                    string_start = byte_idx;
-                }
-            } else {
-                if ch == '\\' {
-                    chars.next();
-                    continue;
-                }
-                if ch == '"' {
-                    in_string = false;
-                    string_ranges.push(string_start..byte_idx + ch.len_utf8());
-                }
-            }
+        for range in &string_ranges {
+            result.add_annotation(AnnotationType::String, range.start, range.end);
         }
 
         let is_in_string = |byte_idx: usize| -> bool {
