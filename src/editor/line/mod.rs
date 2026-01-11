@@ -106,20 +106,99 @@ impl Line {
             while let Some(rel_pos) = self.string[search_start..].find(keyword) {
                 let start = search_start + rel_pos;
                 let end = start + keyword.len();
-            
-                let is_word_boundary_before = start == 0 
-                    || !self.string[..start].chars().last().map_or(false, |c| c.is_alphanumeric() || c == '_');
+
+                let is_word_boundary_before = start == 0
+                    || !self.string[..start]
+                        .chars()
+                        .last()
+                        .map_or(false, |c| c.is_alphanumeric() || c == '_');
                 let is_word_boundary_after = end >= self.string.len()
-                    || !self.string[end..].chars().next().map_or(false, |c| c.is_alphanumeric() || c == '_');
-                
+                    || !self.string[end..]
+                        .chars()
+                        .next()
+                        .map_or(false, |c| c.is_alphanumeric() || c == '_');
+
                 if is_word_boundary_before && is_word_boundary_after {
-                    result.add_annotation(
-                        AnnotationType::Keyword,
-                        start,
-                        end,
-                    );
+                    result.add_annotation(AnnotationType::Keyword, start, end);
                 }
                 search_start = start + 1;
+            }
+        }
+
+        let mut in_string = false;
+        let mut string_start = 0;
+        let mut chars = self.string.char_indices().peekable();
+
+        while let Some((byte_idx, ch)) = chars.next() {
+            if !in_string {
+                if ch == '"' {
+                    in_string = true;
+                    string_start = byte_idx;
+                }
+            } else {
+                if ch == '\\' {
+                    chars.next();
+                    continue;
+                }
+                if ch == '"' {
+                    in_string = false;
+                    result.add_annotation(
+                        AnnotationType::String,
+                        string_start,
+                        byte_idx + ch.len_utf8(),
+                    );
+                }
+            }
+        }
+
+        let mut string_ranges = Vec::new();
+        let mut in_string = false;
+        let mut string_start = 0;
+        let mut chars = self.string.char_indices().peekable();
+
+        while let Some((byte_idx, ch)) = chars.next() {
+            if !in_string {
+                if ch == '"' {
+                    in_string = true;
+                    string_start = byte_idx;
+                }
+            } else {
+                if ch == '\\' {
+                    chars.next();
+                    continue;
+                }
+                if ch == '"' {
+                    in_string = false;
+                    string_ranges.push(string_start..byte_idx + ch.len_utf8());
+                }
+            }
+        }
+
+        let is_in_string = |byte_idx: usize| -> bool {
+            string_ranges.iter().any(|range| range.contains(&byte_idx))
+        };
+
+        if let Some(comment_start) = self.string.find("//") {
+            if !is_in_string(comment_start) {
+                let comment_end = self.string.len();
+                result.add_annotation(AnnotationType::Comment, comment_start, comment_end);
+            }
+        }
+
+        let mut search_start = 0;
+        while let Some(rel_pos) = self.string[search_start..].find("/*") {
+            let open_byte = search_start + rel_pos;
+            if !is_in_string(open_byte) {
+                if let Some(rel_close_pos) = self.string[open_byte + 2..].find("*/") {
+                    let close_byte = open_byte + 2 + rel_close_pos + 2;
+                    result.add_annotation(AnnotationType::Comment, open_byte, close_byte);
+                    search_start = close_byte;
+                } else {
+                    result.add_annotation(AnnotationType::Comment, open_byte, self.string.len());
+                    break;
+                }
+            } else {
+                search_start = open_byte + 2;
             }
         }
 
