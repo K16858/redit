@@ -61,6 +61,33 @@ fn find_number_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
     ranges
 }
 
+fn find_type_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
+    let mut ranges = Vec::new();
+    let mut in_type = false;
+    let mut type_start = 0;
+
+    for (byte_idx, ch) in string.char_indices() {
+        if !in_type {
+            if ch.is_uppercase() {
+                in_type = true;
+                type_start = byte_idx;
+            }
+        } else {
+            if ch.is_alphanumeric() || ch == '_' {
+            } else {
+                in_type = false;
+                ranges.push(type_start..byte_idx);
+            }
+        }
+    }
+
+    if in_type {
+        ranges.push(type_start..string.len());
+    }
+
+    ranges
+}
+
 impl Highlighter for RustHighlighter {
     fn highlight_line(&self, line: &str, _line_idx: usize) -> Vec<HighlightAnnotation> {
         let mut annotations = Vec::new();
@@ -142,6 +169,15 @@ impl Highlighter for RustHighlighter {
                     end: range.end,
                 });
             }
+        }
+
+        let type_ranges = find_type_ranges(line);
+        for range in &type_ranges {
+            annotations.push(HighlightAnnotation {
+                annotation_type: AnnotationType::Type,
+                start: range.start,
+                end: range.end,
+            });
         }
 
         for range in &comment_ranges {
