@@ -249,10 +249,7 @@ impl Highlighter for RustHighlighter {
             comment_ranges.iter().any(|range| range.contains(&byte_idx))
         };
 
-        let primitive_types = [
-            "i8", "i16", "i32", "i64", "i128", "u8", "u16", "u32", "u64", "u128", "f32", "f64",
-        ];
-        for primitive_type in primitive_types {
+        for primitive_type in self.config.primitive_types {
             let mut search_start = 0;
             while let Some(rel_pos) = line[search_start..].find(primitive_type) {
                 let start = search_start + rel_pos;
