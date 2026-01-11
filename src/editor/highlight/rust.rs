@@ -29,6 +29,28 @@ fn find_string_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
     ranges
 }
 
+fn find_number_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
+    let mut ranges = Vec::new();
+    let mut in_number = false;
+    let mut number_start = 0;
+    let mut chars = string.char_indices().peekable();
+
+    while let Some((byte_idx, ch)) = chars.next() {
+        if !in_number {
+            if ch.is_digit(10) {
+                in_number = true;
+                number_start = byte_idx;
+            }
+        } else {
+            if !ch.is_digit(10) {
+                in_number = false;
+                ranges.push(number_start..byte_idx);
+            }
+        }
+    }
+    ranges
+}
+
 impl Highlighter for RustHighlighter {
     fn highlight_line(&self, line: &str, _line_idx: usize) -> Vec<HighlightAnnotation> {
         let mut annotations = Vec::new();
@@ -66,6 +88,15 @@ impl Highlighter for RustHighlighter {
         for range in &string_ranges {
             annotations.push(HighlightAnnotation {
                 annotation_type: AnnotationType::String,
+                start: range.start,
+                end: range.end,
+            });
+        }
+
+        let number_ranges = find_number_ranges(line);
+        for range in &number_ranges {
+            annotations.push(HighlightAnnotation {
+                annotation_type: AnnotationType::Number,
                 start: range.start,
                 end: range.end,
             });

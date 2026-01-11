@@ -3,6 +3,7 @@ pub enum AnnotationType {
     Match,
     SelectedMatch,
     Keyword,
+    Number,
     String,
     Comment,
 }

@@ -42,6 +42,14 @@ impl From<AnnotationType> for Attribute {
                 }),
                 background: None,
             },
+            AnnotationType::Number => Self {
+                foreground: Some(Color::Rgb {
+                    r: 206,
+                    g: 145,
+                    b: 120,
+                }),
+                background: None,
+            },
             AnnotationType::String => Self {
                 foreground: Some(Color::Rgb {
                     r: 206,
