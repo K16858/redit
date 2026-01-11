@@ -298,7 +298,7 @@ impl Editor {
                 .render(self.terminal_size.height.saturating_sub(2));
         }
         if self.terminal_size.height > 2 {
-            let _ = self.view.draw(0);
+            self.view.render(0);
         }
 
         let new_caret_pos = if self.in_prompt() {
