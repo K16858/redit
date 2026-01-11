@@ -1,8 +1,18 @@
 use super::Highlighter;
 use crate::editor::annotated_string::AnnotationType;
-use crate::editor::highlight::{HighlightAnnotation, HighlightState};
+use crate::editor::highlight::{HighlightAnnotation, HighlightState, LanguageConfig, RUST_CONFIG};
 
-pub struct RustHighlighter;
+pub struct RustHighlighter {
+    config: &'static LanguageConfig,
+}
+
+impl RustHighlighter {
+    pub fn new() -> Self {
+        Self {
+            config: &RUST_CONFIG,
+        }
+    }
+}
 
 fn find_string_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
     let mut ranges = Vec::new();
@@ -157,8 +167,7 @@ impl Highlighter for RustHighlighter {
     ) -> (Vec<HighlightAnnotation>, HighlightState) {
         let mut annotations = Vec::new();
 
-        let keywords = ["fn", "let", "mut", "if", "else", "for", "while", "match"];
-        for keyword in keywords {
+        for keyword in self.config.keywords {
             let mut search_start = 0;
             while let Some(rel_pos) = line[search_start..].find(keyword) {
                 let start = search_start + rel_pos;
@@ -301,7 +310,7 @@ impl Highlighter for RustHighlighter {
         for range in &type_ranges {
             if !is_in_string(range.start) && !is_in_comment(range.start) {
                 let word = &line[range.start..range.end];
-                let is_keyword = keywords.iter().any(|&kw| kw == word);
+                let is_keyword = self.config.keywords.iter().any(|&kw| kw == word);
                 if !is_keyword {
                     annotations.push(HighlightAnnotation {
                         annotation_type: AnnotationType::Type,

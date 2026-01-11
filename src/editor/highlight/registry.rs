@@ -14,7 +14,7 @@ impl HighlighterRegistry {
             extension_map: HashMap::new(),
         };
 
-        registry.register(Box::new(RustHighlighter), vec!["rs".to_string()]);
+        registry.register(Box::new(RustHighlighter::new()), vec!["rs".to_string()]);
 
         registry
     }
