@@ -5,6 +5,7 @@ pub enum AnnotationType {
     Keyword,
     Number,
     Type,
+    PrimitiveType,
     String,
     Comment,
 }

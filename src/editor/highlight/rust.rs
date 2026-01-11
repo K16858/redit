@@ -160,6 +160,39 @@ impl Highlighter for RustHighlighter {
             comment_ranges.iter().any(|range| range.contains(&byte_idx))
         };
 
+        let primitive_types = [
+            "i8", "i16", "i32", "i64", "i128", "u8", "u16", "u32", "u64", "u128", "f32", "f64",
+        ];
+        for primitive_type in primitive_types {
+            let mut search_start = 0;
+            while let Some(rel_pos) = line[search_start..].find(primitive_type) {
+                let start = search_start + rel_pos;
+                let end = start + primitive_type.len();
+
+                let is_word_boundary_before = start == 0
+                    || !line[..start]
+                        .chars()
+                        .last()
+                        .map_or(false, |c| c.is_alphanumeric() || c == '_');
+                let is_word_boundary_after = end >= line.len()
+                    || !line[end..]
+                        .chars()
+                        .next()
+                        .map_or(false, |c| c.is_alphanumeric() || c == '_');
+
+                if is_word_boundary_before && is_word_boundary_after {
+                    if !is_in_string(start) && !is_in_comment(start) {
+                        annotations.push(HighlightAnnotation {
+                            annotation_type: AnnotationType::PrimitiveType,
+                            start,
+                            end,
+                        });
+                    }
+                }
+                search_start = start + 1;
+            }
+        }
+
         let number_ranges = find_number_ranges(line);
         for range in &number_ranges {
             if !is_in_string(range.start) && !is_in_comment(range.start) {
