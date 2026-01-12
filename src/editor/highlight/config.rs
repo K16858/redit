@@ -13,29 +13,51 @@ pub struct LanguageConfig {
     pub brackets: Vec<BracketConfig>,
 }
 
-pub const RUST_CONFIG: LanguageConfig = LanguageConfig {
-    keywords: &["fn", "let", "mut", "if", "else", "for", "while", "match"],
-    primitive_types: &[
-        "i8", "i16", "i32", "i64", "i128", "u8", "u16", "u32", "u64", "u128", "f32", "f64",
-    ],
-    line_comment_start: "//",
-    block_comment_start: "/*",
-    block_comment_end: "*/",
-    brackets: &[
-        BracketConfig {
-            open: '(',
-            close: ')',
-            color_offset: 0,
-        },
-        BracketConfig {
-            open: '{',
-            close: '}',
-            color_offset: 1,
-        },
-        BracketConfig {
-            open: '[',
-            close: ']',
-            color_offset: 2,
-        },
-    ],
-};
+pub fn default_rust_config() -> LanguageConfig {
+    LanguageConfig {
+        keywords: vec![
+            "fn".to_string(),
+            "let".to_string(),
+            "mut".to_string(),
+            "if".to_string(),
+            "else".to_string(),
+            "for".to_string(),
+            "while".to_string(),
+            "match".to_string(),
+        ],
+        primitive_types: vec![
+            "i8".to_string(),
+            "i16".to_string(),
+            "i32".to_string(),
+            "i64".to_string(),
+            "i128".to_string(),
+            "u8".to_string(),
+            "u16".to_string(),
+            "u32".to_string(),
+            "u64".to_string(),
+            "u128".to_string(),
+            "f32".to_string(),
+            "f64".to_string(),
+        ],
+        line_comment_start: "//".to_string(),
+        block_comment_start: "/*".to_string(),
+        block_comment_end: "*/".to_string(),
+        brackets: vec![
+            BracketConfig {
+                open: '(',
+                close: ')',
+                color_offset: 0,
+            },
+            BracketConfig {
+                open: '{',
+                close: '}',
+                color_offset: 1,
+            },
+            BracketConfig {
+                open: '[',
+                close: ']',
+                color_offset: 2,
+            },
+        ],
+    }
+}
