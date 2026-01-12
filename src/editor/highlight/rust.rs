@@ -210,15 +210,15 @@ impl Highlighter for RustHighlighter {
 
         let mut comment_ranges = Vec::new();
         if state.in_block_comment {
-            if let Some(close_pos) = line.find("*/") {
-                let close_byte = close_pos + 2;
+            if let Some(close_pos) = line.find(self.config.block_comment_end) {
+                let close_byte = close_pos + self.config.block_comment_end.len();
                 comment_ranges.push(0..close_byte);
                 state.in_block_comment = false;
             } else {
                 comment_ranges.push(0..line.len());
             }
         } else {
-            if let Some(comment_start) = line.find("//") {
+            if let Some(comment_start) = line.find(self.config.line_comment_start) {
                 if !is_in_string(comment_start) {
                     comment_ranges.push(comment_start..line.len());
                 }
@@ -229,11 +229,17 @@ impl Highlighter for RustHighlighter {
         } else {
             0
         };
-        while let Some(rel_pos) = line[search_start..].find("/*") {
+        while let Some(rel_pos) = line[search_start..].find(self.config.block_comment_start) {
             let open_byte = search_start + rel_pos;
             if !is_in_string(open_byte) {
-                if let Some(rel_close_pos) = line[open_byte + 2..].find("*/") {
-                    let close_byte = open_byte + 2 + rel_close_pos + 2;
+                if let Some(rel_close_pos) = line
+                    [open_byte + self.config.block_comment_start.len()..]
+                    .find(self.config.block_comment_end)
+                {
+                    let close_byte = open_byte
+                        + self.config.block_comment_start.len()
+                        + rel_close_pos
+                        + self.config.block_comment_end.len();
                     comment_ranges.push(open_byte..close_byte);
                     search_start = close_byte;
                 } else {
@@ -242,7 +248,7 @@ impl Highlighter for RustHighlighter {
                     break;
                 }
             } else {
-                search_start = open_byte + 2;
+                search_start = open_byte + self.config.block_comment_start.len();
             }
         }
         let is_in_comment = |byte_idx: usize| -> bool {
