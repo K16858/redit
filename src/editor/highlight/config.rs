@@ -1,9 +1,11 @@
+#[derive(Clone)]
 pub struct BracketConfig {
     pub open: char,
     pub close: char,
     pub color_offset: usize,
 }
 
+#[derive(Clone)]
 pub struct LanguageConfig {
     pub keywords: Vec<String>,
     pub primitive_types: Vec<String>,
@@ -60,4 +62,59 @@ pub fn default_rust_config() -> LanguageConfig {
             },
         ],
     }
+}
+
+use crate::editor::highlight::config_file::{BracketConfigFile, RustConfigFile};
+
+pub fn merge_config(
+    default: &LanguageConfig,
+    file_config: Option<&RustConfigFile>,
+) -> LanguageConfig {
+    let file_config = match file_config {
+        Some(c) => c,
+        None => return default.clone(),
+    };
+
+    LanguageConfig {
+        keywords: file_config
+            .keywords
+            .clone()
+            .unwrap_or_else(|| default.keywords.clone()),
+        primitive_types: file_config
+            .primitive_types
+            .clone()
+            .unwrap_or_else(|| default.primitive_types.clone()),
+        line_comment_start: file_config
+            .line_comment_start
+            .clone()
+            .unwrap_or_else(|| default.line_comment_start.clone()),
+        block_comment_start: file_config
+            .block_comment_start
+            .clone()
+            .unwrap_or_else(|| default.block_comment_start.clone()),
+        block_comment_end: file_config
+            .block_comment_end
+            .clone()
+            .unwrap_or_else(|| default.block_comment_end.clone()),
+        brackets: merge_brackets(&default.brackets, file_config.brackets.as_ref()),
+    }
+}
+
+fn merge_brackets(
+    default: &[BracketConfig],
+    file_brackets: Option<&Vec<BracketConfigFile>>,
+) -> Vec<BracketConfig> {
+    let file_brackets = match file_brackets {
+        Some(b) => b,
+        None => return default.to_vec(),
+    };
+
+    file_brackets
+        .iter()
+        .map(|b| BracketConfig {
+            open: b.open.chars().next().unwrap_or('('),
+            close: b.close.chars().next().unwrap_or(')'),
+            color_offset: b.color_offset.unwrap_or(0),
+        })
+        .collect()
 }
