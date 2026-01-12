@@ -332,77 +332,41 @@ impl Highlighter for RustHighlighter {
             });
         }
 
+        // 括弧のハイライト
+        // 注意: HighlightState の paren_level, brace_level, bracket_level は
+        // 現在の実装では順序に依存しているため、設定構造体のインデックスと対応させる
+        let mut bracket_levels: [usize; 3] =
+            [state.paren_level, state.brace_level, state.bracket_level];
+
         for (byte_idx, ch) in line.char_indices() {
             if !is_in_string(byte_idx) && !is_in_comment(byte_idx) {
-                let bracket_type = match ch {
-                    '(' => {
-                        let level = (state.paren_level + 0) % 4;
-                        state.paren_level += 1;
-                        Some(match level {
+                let mut bracket_type = None;
+
+                for (bracket_idx, bracket_config) in self.config.brackets.iter().enumerate() {
+                    if ch == bracket_config.open {
+                        let level = (bracket_levels[bracket_idx] + bracket_config.color_offset) % 4;
+                        bracket_levels[bracket_idx] += 1;
+                        bracket_type = Some(match level {
                             0 => AnnotationType::Bracket0,
                             1 => AnnotationType::Bracket1,
                             2 => AnnotationType::Bracket2,
                             3 => AnnotationType::Bracket3,
                             _ => unreachable!(),
-                        })
-                    }
-                    ')' => {
-                        state.paren_level = state.paren_level.saturating_sub(1);
-                        let level = (state.paren_level + 0) % 4;
-                        Some(match level {
+                        });
+                        break;
+                    } else if ch == bracket_config.close {
+                        bracket_levels[bracket_idx] = bracket_levels[bracket_idx].saturating_sub(1);
+                        let level = (bracket_levels[bracket_idx] + bracket_config.color_offset) % 4;
+                        bracket_type = Some(match level {
                             0 => AnnotationType::Bracket0,
                             1 => AnnotationType::Bracket1,
                             2 => AnnotationType::Bracket2,
                             3 => AnnotationType::Bracket3,
                             _ => unreachable!(),
-                        })
+                        });
+                        break;
                     }
-                    '{' => {
-                        let level = (state.brace_level + 1) % 4;
-                        state.brace_level += 1;
-                        Some(match level {
-                            0 => AnnotationType::Bracket0,
-                            1 => AnnotationType::Bracket1,
-                            2 => AnnotationType::Bracket2,
-                            3 => AnnotationType::Bracket3,
-                            _ => unreachable!(),
-                        })
-                    }
-                    '}' => {
-                        state.brace_level = state.brace_level.saturating_sub(1);
-                        let level = (state.brace_level + 1) % 4;
-                        Some(match level {
-                            0 => AnnotationType::Bracket0,
-                            1 => AnnotationType::Bracket1,
-                            2 => AnnotationType::Bracket2,
-                            3 => AnnotationType::Bracket3,
-                            _ => unreachable!(),
-                        })
-                    }
-                    '[' => {
-                        let level = (state.bracket_level + 2) % 4;
-                        state.bracket_level += 1;
-                        Some(match level {
-                            0 => AnnotationType::Bracket0,
-                            1 => AnnotationType::Bracket1,
-                            2 => AnnotationType::Bracket2,
-                            3 => AnnotationType::Bracket3,
-                            _ => unreachable!(),
-                        })
-                    }
-                    ']' => {
-                        state.bracket_level = state.bracket_level.saturating_sub(1);
-                        let level = (state.bracket_level + 2) % 4;
-                        Some(match level {
-                            0 => AnnotationType::Bracket0,
-                            1 => AnnotationType::Bracket1,
-                            2 => AnnotationType::Bracket2,
-                            3 => AnnotationType::Bracket3,
-                            _ => unreachable!(),
-                        })
-                    }
-                    _ => None,
-                };
+                }
 
                 if let Some(annotation_type) = bracket_type {
                     annotations.push(HighlightAnnotation {
@@ -413,6 +377,10 @@ impl Highlighter for RustHighlighter {
                 }
             }
         }
+
+        state.paren_level = bracket_levels[0];
+        state.brace_level = bracket_levels[1];
+        state.bracket_level = bracket_levels[2];
 
         (annotations, state)
     }

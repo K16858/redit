@@ -1,9 +1,16 @@
+pub struct BracketConfig {
+    pub open: char,
+    pub close: char,
+    pub color_offset: usize,
+}
+
 pub struct LanguageConfig {
     pub keywords: &'static [&'static str],
     pub primitive_types: &'static [&'static str],
     pub line_comment_start: &'static str,
     pub block_comment_start: &'static str,
     pub block_comment_end: &'static str,
+    pub brackets: &'static [BracketConfig],
 }
 
 pub const RUST_CONFIG: LanguageConfig = LanguageConfig {
@@ -14,4 +21,21 @@ pub const RUST_CONFIG: LanguageConfig = LanguageConfig {
     line_comment_start: "//",
     block_comment_start: "/*",
     block_comment_end: "*/",
+    brackets: &[
+        BracketConfig {
+            open: '(',
+            close: ')',
+            color_offset: 0,
+        },
+        BracketConfig {
+            open: '{',
+            close: '}',
+            color_offset: 1,
+        },
+        BracketConfig {
+            open: '[',
+            close: ']',
+            color_offset: 2,
+        },
+    ],
 };
