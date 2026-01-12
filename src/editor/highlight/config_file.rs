@@ -1,4 +1,6 @@
 use serde::Deserialize;
+use std::fs;
+use std::path::Path;
 
 #[derive(Deserialize)]
 pub struct ConfigFile {
@@ -39,4 +41,25 @@ pub struct ColorRgb {
     pub r: u8,
     pub g: u8,
     pub b: u8,
+}
+
+#[derive(Debug)]
+pub enum ConfigError {
+    FileNotFound,
+    IoError(std::io::Error),
+    ParseError(toml::de::Error),
+}
+
+pub fn load_config_file(path: Option<&Path>) -> Result<ConfigFile, ConfigError> {
+    let config_path = path.unwrap_or_else(|| Path::new("redit.toml"));
+
+    if !config_path.exists() {
+        return Err(ConfigError::FileNotFound);
+    }
+
+    let contents = fs::read_to_string(config_path).map_err(ConfigError::IoError)?;
+
+    let config: ConfigFile = toml::from_str(&contents).map_err(ConfigError::ParseError)?;
+
+    Ok(config)
 }
