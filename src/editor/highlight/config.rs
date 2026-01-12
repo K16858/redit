@@ -5,12 +5,12 @@ pub struct BracketConfig {
 }
 
 pub struct LanguageConfig {
-    pub keywords: &'static [&'static str],
-    pub primitive_types: &'static [&'static str],
-    pub line_comment_start: &'static str,
-    pub block_comment_start: &'static str,
-    pub block_comment_end: &'static str,
-    pub brackets: &'static [BracketConfig],
+    pub keywords: Vec<String>,
+    pub primitive_types: Vec<String>,
+    pub line_comment_start: String,
+    pub block_comment_start: String,
+    pub block_comment_end: String,
+    pub brackets: Vec<BracketConfig>,
 }
 
 pub const RUST_CONFIG: LanguageConfig = LanguageConfig {
