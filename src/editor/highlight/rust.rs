@@ -5,13 +5,13 @@ use crate::editor::highlight::{
 };
 
 pub struct RustHighlighter {
-    config: &'static LanguageConfig,
+    config: LanguageConfig,
 }
 
 impl RustHighlighter {
     pub fn new() -> Self {
         Self {
-            config: &RUST_CONFIG,
+            config: default_rust_config(),
         }
     }
 }
