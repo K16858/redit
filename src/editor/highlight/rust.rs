@@ -169,9 +169,9 @@ impl Highlighter for RustHighlighter {
     ) -> (Vec<HighlightAnnotation>, HighlightState) {
         let mut annotations = Vec::new();
 
-        for keyword in self.config.keywords {
+        for keyword in &self.config.keywords {
             let mut search_start = 0;
-            while let Some(rel_pos) = line[search_start..].find(keyword) {
+            while let Some(rel_pos) = line[search_start..].find(keyword.as_str()) {
                 let start = search_start + rel_pos;
                 let end = start + keyword.len();
 
@@ -212,7 +212,7 @@ impl Highlighter for RustHighlighter {
 
         let mut comment_ranges = Vec::new();
         if state.in_block_comment {
-            if let Some(close_pos) = line.find(self.config.block_comment_end) {
+            if let Some(close_pos) = line.find(self.config.block_comment_end.as_str()) {
                 let close_byte = close_pos + self.config.block_comment_end.len();
                 comment_ranges.push(0..close_byte);
                 state.in_block_comment = false;
@@ -220,7 +220,7 @@ impl Highlighter for RustHighlighter {
                 comment_ranges.push(0..line.len());
             }
         } else {
-            if let Some(comment_start) = line.find(self.config.line_comment_start) {
+            if let Some(comment_start) = line.find(self.config.line_comment_start.as_str()) {
                 if !is_in_string(comment_start) {
                     comment_ranges.push(comment_start..line.len());
                 }
@@ -231,12 +231,14 @@ impl Highlighter for RustHighlighter {
         } else {
             0
         };
-        while let Some(rel_pos) = line[search_start..].find(self.config.block_comment_start) {
+        while let Some(rel_pos) =
+            line[search_start..].find(self.config.block_comment_start.as_str())
+        {
             let open_byte = search_start + rel_pos;
             if !is_in_string(open_byte) {
                 if let Some(rel_close_pos) = line
                     [open_byte + self.config.block_comment_start.len()..]
-                    .find(self.config.block_comment_end)
+                    .find(self.config.block_comment_end.as_str())
                 {
                     let close_byte = open_byte
                         + self.config.block_comment_start.len()
@@ -257,9 +259,9 @@ impl Highlighter for RustHighlighter {
             comment_ranges.iter().any(|range| range.contains(&byte_idx))
         };
 
-        for primitive_type in self.config.primitive_types {
+        for primitive_type in &self.config.primitive_types {
             let mut search_start = 0;
-            while let Some(rel_pos) = line[search_start..].find(primitive_type) {
+            while let Some(rel_pos) = line[search_start..].find(primitive_type.as_str()) {
                 let start = search_start + rel_pos;
                 let end = start + primitive_type.len();
 
@@ -315,7 +317,7 @@ impl Highlighter for RustHighlighter {
         for range in &type_ranges {
             if !is_in_string(range.start) && !is_in_comment(range.start) {
                 let word = &line[range.start..range.end];
-                let is_keyword = self.config.keywords.iter().any(|&kw| kw == word);
+                let is_keyword = self.config.keywords.iter().any(|kw| kw.as_str() == word);
                 if !is_keyword {
                     annotations.push(HighlightAnnotation {
                         annotation_type: AnnotationType::Type,
