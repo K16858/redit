@@ -174,6 +174,7 @@ fn find_type_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
 }
 
 impl Highlighter for RustHighlighter {
+    #[allow(clippy::too_many_lines)]
     fn highlight_line(
         &self,
         line: &str,

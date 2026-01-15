@@ -45,7 +45,9 @@ pub struct ColorRgb {
 #[derive(Debug)]
 pub enum ConfigError {
     FileNotFound,
+    #[allow(dead_code)]
     IoError(std::io::Error),
+    #[allow(dead_code)]
     ParseError(toml::de::Error),
 }
 

@@ -191,23 +191,20 @@ pub fn merge_color_scheme(
     default: &ColorScheme,
     file_config: Option<&ColorsConfig>,
 ) -> ColorScheme {
-    let file_config = match file_config {
-        Some(c) => c,
-        None => {
-            return ColorScheme {
-                match_fg: default.match_fg,
-                match_bg: default.match_bg,
-                selected_match_fg: default.selected_match_fg,
-                selected_match_bg: default.selected_match_bg,
-                keyword: default.keyword,
-                number: default.number,
-                type_name: default.type_name,
-                primitive_type: default.primitive_type,
-                string: default.string,
-                comment: default.comment,
-                brackets: default.brackets,
-            };
-        }
+    let Some(file_config) = file_config else {
+        return ColorScheme {
+            match_fg: default.match_fg,
+            match_bg: default.match_bg,
+            selected_match_fg: default.selected_match_fg,
+            selected_match_bg: default.selected_match_bg,
+            keyword: default.keyword,
+            number: default.number,
+            type_name: default.type_name,
+            primitive_type: default.primitive_type,
+            string: default.string,
+            comment: default.comment,
+            brackets: default.brackets,
+        };
     };
 
     let brackets = if let Some(file_brackets) = &file_config.brackets {

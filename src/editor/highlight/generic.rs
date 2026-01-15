@@ -120,10 +120,11 @@ impl Highlighter for GenericHighlighter {
         "generic"
     }
 
+    #[allow(clippy::too_many_lines)]
     fn highlight_line(
         &self,
         line: &str,
-        line_index: usize,
+        _line_index: usize,
         mut state: HighlightState,
     ) -> (Vec<HighlightAnnotation>, HighlightState) {
         let mut annotations = Vec::new();
@@ -154,7 +155,8 @@ impl Highlighter for GenericHighlighter {
                     block_comment_ranges.push(pos..line.len());
                     break;
                 }
-            } else if let Some(start_pos) = line[pos..].find(self.config.block_comment_start.as_str())
+            } else if let Some(start_pos) =
+                line[pos..].find(self.config.block_comment_start.as_str())
             {
                 let abs_start = pos + start_pos;
                 if is_in_string(abs_start) {
@@ -184,13 +186,15 @@ impl Highlighter for GenericHighlighter {
 
         // Line comments
         if let Some(comment_start) = line.find(self.config.line_comment_start.as_str())
-            && !is_in_string(comment_start) && !is_in_block_comment(comment_start) {
-                annotations.push(HighlightAnnotation {
-                    start: comment_start,
-                    end: line.len(),
-                    annotation_type: AnnotationType::Comment,
-                });
-            }
+            && !is_in_string(comment_start)
+            && !is_in_block_comment(comment_start)
+        {
+            annotations.push(HighlightAnnotation {
+                start: comment_start,
+                end: line.len(),
+                annotation_type: AnnotationType::Comment,
+            });
+        }
 
         let is_in_comment = |pos: usize| -> bool {
             is_in_block_comment(pos) || {
@@ -226,7 +230,12 @@ impl Highlighter for GenericHighlighter {
         }
 
         // Primitive types
-        for prim_type in self.config.primitive_types.iter().map(std::string::String::as_str) {
+        for prim_type in self
+            .config
+            .primitive_types
+            .iter()
+            .map(std::string::String::as_str)
+        {
             let mut search_pos = 0;
             while search_pos < line.len() {
                 if let Some(found_pos) = line[search_pos..].find(prim_type) {
@@ -266,10 +275,11 @@ impl Highlighter for GenericHighlighter {
 
                 if ch == '0'
                     && let Some((_, next_ch)) = chars.peek()
-                        && (*next_ch == 'x' || *next_ch == 'b' || *next_ch == 'o') {
-                            chars.next();
-                            end += 1;
-                        }
+                    && (*next_ch == 'x' || *next_ch == 'b' || *next_ch == 'o')
+                {
+                    chars.next();
+                    end += 1;
+                }
 
                 while let Some(&(_, next_ch)) = chars.peek() {
                     if next_ch.is_alphanumeric() || next_ch == '_' || next_ch == '.' {

@@ -89,9 +89,8 @@ pub fn merge_config(
     default: &LanguageConfig,
     file_config: Option<&LanguageConfigFile>,
 ) -> LanguageConfig {
-    let file_config = match file_config {
-        Some(c) => c,
-        None => return default.clone(),
+    let Some(file_config) = file_config else {
+        return default.clone();
     };
 
     LanguageConfig {
@@ -123,9 +122,8 @@ fn merge_brackets(
     default: &[BracketConfig],
     file_brackets: Option<&Vec<BracketConfigFile>>,
 ) -> Vec<BracketConfig> {
-    let file_brackets = match file_brackets {
-        Some(b) => b,
-        None => return default.to_vec(),
+    let Some(file_brackets) = file_brackets else {
+        return default.to_vec();
     };
 
     file_brackets
