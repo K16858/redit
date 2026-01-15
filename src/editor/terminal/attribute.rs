@@ -1,6 +1,9 @@
 use crossterm::style::Color;
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
 
 use crate::editor::annotated_string::AnnotationType;
+use crate::editor::highlight::config_file::{ColorRgb, ColorsConfigFile, load_config_file};
 
 pub struct ColorScheme {
     pub match_fg: Color,
@@ -91,6 +94,16 @@ pub const DEFAULT_COLOR_SCHEME: ColorScheme = ColorScheme {
     ],
 };
 
+static COLOR_SCHEME: Lazy<Mutex<ColorScheme>> = Lazy::new(|| {
+    let default = DEFAULT_COLOR_SCHEME;
+    let merged_scheme = if let Ok(config_file) = load_config_file(None) {
+        merge_color_scheme(&default, config_file.colors.as_ref())
+    } else {
+        default
+    };
+    Mutex::new(merged_scheme)
+});
+
 pub struct Attribute {
     pub foreground: Option<Color>,
     pub background: Option<Color>,
@@ -98,7 +111,7 @@ pub struct Attribute {
 
 impl From<AnnotationType> for Attribute {
     fn from(annotation_type: AnnotationType) -> Self {
-        let scheme = &DEFAULT_COLOR_SCHEME;
+        let scheme = COLOR_SCHEME.lock().unwrap();
         match annotation_type {
             AnnotationType::Match => Self {
                 foreground: Some(scheme.match_fg),
@@ -149,5 +162,87 @@ impl From<AnnotationType> for Attribute {
                 background: None,
             },
         }
+    }
+}
+
+fn color_rgb_to_color(rgb: &ColorRgb) -> Color {
+    Color::Rgb {
+        r: rgb.r,
+        g: rgb.g,
+        b: rgb.b,
+    }
+}
+
+pub fn merge_color_scheme(
+    default: &ColorScheme,
+    file_config: Option<&ColorsConfigFile>,
+) -> ColorScheme {
+    let file_config = match file_config {
+        Some(c) => c,
+        None => {
+            return ColorScheme {
+                match_fg: default.match_fg,
+                match_bg: default.match_bg,
+                selected_match_fg: default.selected_match_fg,
+                selected_match_bg: default.selected_match_bg,
+                keyword: default.keyword,
+                number: default.number,
+                type_name: default.type_name,
+                primitive_type: default.primitive_type,
+                string: default.string,
+                comment: default.comment,
+                brackets: default.brackets,
+            };
+        }
+    };
+
+    let brackets = if let Some(file_brackets) = &file_config.brackets {
+        let mut result = default.brackets;
+        for (i, bracket_color) in file_brackets.iter().enumerate() {
+            if i < result.len() {
+                result[i] = color_rgb_to_color(bracket_color);
+            }
+        }
+        result
+    } else {
+        default.brackets
+    };
+
+    ColorScheme {
+        match_fg: default.match_fg,
+        match_bg: default.match_bg,
+        selected_match_fg: default.selected_match_fg,
+        selected_match_bg: default.selected_match_bg,
+        keyword: file_config
+            .keyword
+            .as_ref()
+            .map(color_rgb_to_color)
+            .unwrap_or(default.keyword),
+        number: file_config
+            .number
+            .as_ref()
+            .map(color_rgb_to_color)
+            .unwrap_or(default.number),
+        type_name: file_config
+            .type_name
+            .as_ref()
+            .map(color_rgb_to_color)
+            .unwrap_or(default.type_name),
+        primitive_type: file_config
+            .primitive_type
+            .as_ref()
+            .map(color_rgb_to_color)
+            .unwrap_or(default.primitive_type),
+        string: file_config
+            .string
+            .as_ref()
+            .map(color_rgb_to_color)
+            .unwrap_or(default.string),
+        comment: file_config
+            .comment
+            .as_ref()
+            .map(color_rgb_to_color)
+            .unwrap_or(default.comment),
+        brackets,
     }
 }
