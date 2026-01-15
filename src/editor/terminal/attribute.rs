@@ -95,7 +95,7 @@ pub const DEFAULT_COLOR_SCHEME: ColorScheme = ColorScheme {
 };
 
 static COLOR_SCHEME: Lazy<Mutex<ColorScheme>> = Lazy::new(|| {
-    let default = DEFAULT_COLOR_SCHEME;
+    let default = default_color_scheme();
     let merged_scheme = if let Ok(config_file) = load_config_file(None) {
         merge_color_scheme(&default, config_file.colors.as_ref())
     } else {
@@ -103,6 +103,22 @@ static COLOR_SCHEME: Lazy<Mutex<ColorScheme>> = Lazy::new(|| {
     };
     Mutex::new(merged_scheme)
 });
+
+fn default_color_scheme() -> ColorScheme {
+    #[cfg(debug_assertions)]
+    {
+        // Debug build: try to load from docs/examples/default.toml
+        use std::path::Path;
+        if let Ok(config_file) = load_config_file(Some(Path::new("docs/examples/default.toml"))) {
+            if let Some(colors_config) = config_file.colors {
+                return merge_color_scheme(&DEFAULT_COLOR_SCHEME, Some(&colors_config));
+            }
+        }
+    }
+
+    // Release build or fallback: use hardcoded values
+    DEFAULT_COLOR_SCHEME
+}
 
 pub struct Attribute {
     pub foreground: Option<Color>,

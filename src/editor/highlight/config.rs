@@ -16,6 +16,22 @@ pub struct LanguageConfig {
 }
 
 pub fn default_rust_config() -> LanguageConfig {
+    #[cfg(debug_assertions)]
+    {
+        // Debug build: try to load from docs/examples/default.toml
+        use std::path::Path;
+        if let Ok(config_file) = load_config_file(Some(Path::new("docs/examples/default.toml"))) {
+            if let Some(rust_config) = config_file.rust {
+                return merge_config(&hardcoded_rust_config(), Some(&rust_config));
+            }
+        }
+    }
+
+    // Release build or fallback: use hardcoded values
+    hardcoded_rust_config()
+}
+
+fn hardcoded_rust_config() -> LanguageConfig {
     LanguageConfig {
         keywords: vec![
             "fn".to_string(),
@@ -64,7 +80,7 @@ pub fn default_rust_config() -> LanguageConfig {
     }
 }
 
-use crate::editor::highlight::config_file::{BracketConfigFile, RustConfigFile};
+use crate::editor::highlight::config_file::{BracketConfigFile, RustConfigFile, load_config_file};
 
 pub fn merge_config(
     default: &LanguageConfig,
