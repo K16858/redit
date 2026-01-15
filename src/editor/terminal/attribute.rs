@@ -3,7 +3,7 @@ use once_cell::sync::Lazy;
 use std::sync::Mutex;
 
 use crate::editor::annotated_string::AnnotationType;
-use crate::editor::highlight::config_file::{ColorRgb, ColorsConfigFile, load_config_file};
+use crate::editor::highlight::config_file::{ColorRgb, ColorsConfig, load_colors_config};
 
 pub struct ColorScheme {
     pub match_fg: Color,
@@ -96,7 +96,7 @@ pub const DEFAULT_COLOR_SCHEME: ColorScheme = ColorScheme {
 
 static COLOR_SCHEME: Lazy<Mutex<ColorScheme>> = Lazy::new(|| {
     let default = default_color_scheme();
-    let merged_scheme = if let Ok(config_file) = load_config_file(None) {
+    let merged_scheme = if let Ok(config_file) = load_colors_config(None) {
         merge_color_scheme(&default, config_file.colors.as_ref())
     } else {
         default
@@ -107,9 +107,10 @@ static COLOR_SCHEME: Lazy<Mutex<ColorScheme>> = Lazy::new(|| {
 fn default_color_scheme() -> ColorScheme {
     #[cfg(debug_assertions)]
     {
-        // Debug build: try to load from docs/examples/default.toml
         use std::path::Path;
-        if let Ok(config_file) = load_config_file(Some(Path::new("docs/examples/default.toml"))) {
+        if let Ok(config_file) =
+            load_colors_config(Some(Path::new("docs/examples/default/colors.toml")))
+        {
             if let Some(colors_config) = config_file.colors {
                 return merge_color_scheme(&DEFAULT_COLOR_SCHEME, Some(&colors_config));
             }
@@ -191,7 +192,7 @@ fn color_rgb_to_color(rgb: &ColorRgb) -> Color {
 
 pub fn merge_color_scheme(
     default: &ColorScheme,
-    file_config: Option<&ColorsConfigFile>,
+    file_config: Option<&ColorsConfig>,
 ) -> ColorScheme {
     let file_config = match file_config {
         Some(c) => c,

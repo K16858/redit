@@ -1,0 +1,38 @@
+# Default Rust Language Configuration
+
+keywords = [
+    "fn",
+    "let",
+    "mut",
+    "if",
+    "else",
+    "for",
+    "while",
+    "match",
+]
+
+primitive_types = [
+    "i8", "i16", "i32", "i64", "i128",
+    "u8", "u16", "u32", "u64", "u128",
+    "f32", "f64",
+]
+
+line_comment_start = "//"
+block_comment_start = "/*"
+block_comment_end = "*/"
+
+[[brackets]]
+open = "("
+close = ")"
+color_offset = 0
+
+[[brackets]]
+open = "{"
+close = "}"
+color_offset = 1
+
+[[brackets]]
+open = "["
+close = "]"
+color_offset = 2
+

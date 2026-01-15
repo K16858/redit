@@ -18,12 +18,13 @@ pub struct LanguageConfig {
 pub fn default_rust_config() -> LanguageConfig {
     #[cfg(debug_assertions)]
     {
-        // Debug build: try to load from docs/examples/default.toml
+        // Debug build: try to load from docs/examples/default/languages/rust.toml
         use std::path::Path;
-        if let Ok(config_file) = load_config_file(Some(Path::new("docs/examples/default.toml"))) {
-            if let Some(rust_config) = config_file.rust {
-                return merge_config(&hardcoded_rust_config(), Some(&rust_config));
-            }
+        if let Ok(lang_config) = load_language_config(
+            "rust",
+            Some(Path::new("docs/examples/default/languages/rust.toml")),
+        ) {
+            return merge_config(&hardcoded_rust_config(), Some(&lang_config));
         }
     }
 
@@ -80,11 +81,13 @@ fn hardcoded_rust_config() -> LanguageConfig {
     }
 }
 
-use crate::editor::highlight::config_file::{BracketConfigFile, RustConfigFile, load_config_file};
+use crate::editor::highlight::config_file::{
+    BracketConfigFile, LanguageConfigFile, load_language_config,
+};
 
 pub fn merge_config(
     default: &LanguageConfig,
-    file_config: Option<&RustConfigFile>,
+    file_config: Option<&LanguageConfigFile>,
 ) -> LanguageConfig {
     let file_config = match file_config {
         Some(c) => c,
