@@ -5,7 +5,9 @@ pub mod config;
 pub use config::{LanguageConfig, default_rust_config, merge_config};
 
 pub mod config_file;
-pub use config_file::{BracketConfigFile, ColorRgb, ColorsConfigFile, ConfigFile, RustConfigFile};
+pub use config_file::{
+    BracketConfigFile, ColorRgb, ColorsConfigFile, ConfigFile, RustConfigFile, load_config_file,
+};
 
 pub mod rust;
 

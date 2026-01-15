@@ -51,7 +51,7 @@ pub enum ConfigError {
 }
 
 pub fn load_config_file(path: Option<&Path>) -> Result<ConfigFile, ConfigError> {
-    let config_path = path.unwrap_or_else(|| Path::new("redit.toml"));
+    let config_path = path.unwrap_or_else(|| Path::new("den.toml"));
 
     if !config_path.exists() {
         return Err(ConfigError::FileNotFound);
