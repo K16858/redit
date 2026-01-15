@@ -1,8 +1,8 @@
 use super::Highlighter;
 use crate::editor::annotated_string::AnnotationType;
 use crate::editor::highlight::{
-    default_rust_config, load_language_config, merge_config, HighlightAnnotation, HighlightState,
-    LanguageConfig,
+    HighlightAnnotation, HighlightState, LanguageConfig, default_rust_config, load_language_config,
+    merge_config,
 };
 
 pub struct RustHighlighter {

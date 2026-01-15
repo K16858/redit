@@ -1,5 +1,6 @@
+use super::generic::GenericHighlighter;
+use super::rust::RustHighlighter;
 use super::Highlighter;
-use crate::editor::highlight::rust::RustHighlighter;
 use std::collections::HashMap;
 
 pub struct HighlighterRegistry {
@@ -15,6 +16,27 @@ impl HighlighterRegistry {
         };
 
         registry.register(Box::new(RustHighlighter::new()), vec!["rs".to_string()]);
+
+        // Register Python (file-only)
+        if let Some(highlighter) = GenericHighlighter::new("python") {
+            registry.register(Box::new(highlighter), vec!["py".to_string()]);
+        }
+
+        // Register JavaScript (file-only)
+        if let Some(highlighter) = GenericHighlighter::new("javascript") {
+            registry.register(
+                Box::new(highlighter),
+                vec!["js".to_string(), "jsx".to_string()],
+            );
+        }
+
+        // Register C (file-only)
+        if let Some(highlighter) = GenericHighlighter::new("c") {
+            registry.register(
+                Box::new(highlighter),
+                vec!["c".to_string(), "h".to_string()],
+            );
+        }
 
         registry
     }

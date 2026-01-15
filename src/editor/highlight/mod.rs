@@ -11,6 +11,7 @@ pub use config_file::{
 };
 
 pub mod rust;
+pub mod generic;
 
 pub mod registry;
 pub use registry::HighlighterRegistry;
