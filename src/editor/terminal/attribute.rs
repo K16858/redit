@@ -1,5 +1,4 @@
 use crossterm::style::Color;
-use once_cell::sync::Lazy;
 use std::sync::Mutex;
 
 use crate::editor::annotated_string::AnnotationType;
@@ -94,7 +93,7 @@ pub const DEFAULT_COLOR_SCHEME: ColorScheme = ColorScheme {
     ],
 };
 
-static COLOR_SCHEME: Lazy<Mutex<ColorScheme>> = Lazy::new(|| {
+static COLOR_SCHEME: std::sync::LazyLock<Mutex<ColorScheme>> = std::sync::LazyLock::new(|| {
     let default = default_color_scheme();
     let merged_scheme = if let Ok(config_file) = load_colors_config(None) {
         merge_color_scheme(&default, config_file.colors.as_ref())
@@ -110,11 +109,9 @@ fn default_color_scheme() -> ColorScheme {
         use std::path::Path;
         if let Ok(config_file) =
             load_colors_config(Some(Path::new("docs/examples/default/colors.toml")))
-        {
-            if let Some(colors_config) = config_file.colors {
+            && let Some(colors_config) = config_file.colors {
                 return merge_color_scheme(&DEFAULT_COLOR_SCHEME, Some(&colors_config));
             }
-        }
     }
 
     // Release build or fallback: use hardcoded values
@@ -233,33 +230,27 @@ pub fn merge_color_scheme(
         keyword: file_config
             .keyword
             .as_ref()
-            .map(color_rgb_to_color)
-            .unwrap_or(default.keyword),
+            .map_or(default.keyword, color_rgb_to_color),
         number: file_config
             .number
             .as_ref()
-            .map(color_rgb_to_color)
-            .unwrap_or(default.number),
+            .map_or(default.number, color_rgb_to_color),
         type_name: file_config
             .type_name
             .as_ref()
-            .map(color_rgb_to_color)
-            .unwrap_or(default.type_name),
+            .map_or(default.type_name, color_rgb_to_color),
         primitive_type: file_config
             .primitive_type
             .as_ref()
-            .map(color_rgb_to_color)
-            .unwrap_or(default.primitive_type),
+            .map_or(default.primitive_type, color_rgb_to_color),
         string: file_config
             .string
             .as_ref()
-            .map(color_rgb_to_color)
-            .unwrap_or(default.string),
+            .map_or(default.string, color_rgb_to_color),
         comment: file_config
             .comment
             .as_ref()
-            .map(color_rgb_to_color)
-            .unwrap_or(default.comment),
+            .map_or(default.comment, color_rgb_to_color),
         brackets,
     }
 }

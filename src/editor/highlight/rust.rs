@@ -88,7 +88,7 @@ fn find_number_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
                 let mut j = i + 2;
                 while j < chars.len() {
                     let digit_ch = chars[j].1;
-                    if digit_ch >= '0' && digit_ch <= '7' {
+                    if ('0'..='7').contains(&digit_ch) {
                         j += 1;
                     } else {
                         break;
@@ -154,17 +154,15 @@ fn find_type_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
     let mut type_start = 0;
 
     for (byte_idx, ch) in string.char_indices() {
-        if !in_type {
-            if ch.is_uppercase() {
-                in_type = true;
-                type_start = byte_idx;
-            }
-        } else {
+        if in_type {
             if ch.is_alphanumeric() || ch == '_' {
             } else {
                 in_type = false;
                 ranges.push(type_start..byte_idx);
             }
+        } else if ch.is_uppercase() {
+            in_type = true;
+            type_start = byte_idx;
         }
     }
 
@@ -194,12 +192,12 @@ impl Highlighter for RustHighlighter {
                     || !line[..start]
                         .chars()
                         .last()
-                        .map_or(false, |c| c.is_alphanumeric() || c == '_');
+                        .is_some_and(|c| c.is_alphanumeric() || c == '_');
                 let is_word_boundary_after = end >= line.len()
                     || !line[end..]
                         .chars()
                         .next()
-                        .map_or(false, |c| c.is_alphanumeric() || c == '_');
+                        .is_some_and(|c| c.is_alphanumeric() || c == '_');
 
                 if is_word_boundary_before && is_word_boundary_after {
                     annotations.push(HighlightAnnotation {
@@ -234,12 +232,9 @@ impl Highlighter for RustHighlighter {
             } else {
                 comment_ranges.push(0..line.len());
             }
-        } else {
-            if let Some(comment_start) = line.find(self.config.line_comment_start.as_str()) {
-                if !is_in_string(comment_start) {
-                    comment_ranges.push(comment_start..line.len());
-                }
-            }
+        } else if let Some(comment_start) = line.find(self.config.line_comment_start.as_str())
+        && !is_in_string(comment_start) {
+            comment_ranges.push(comment_start..line.len());
         }
         let mut search_start = if state.in_block_comment {
             line.len()
@@ -250,24 +245,22 @@ impl Highlighter for RustHighlighter {
             line[search_start..].find(self.config.block_comment_start.as_str())
         {
             let open_byte = search_start + rel_pos;
-            if !is_in_string(open_byte) {
-                if let Some(rel_close_pos) = line
-                    [open_byte + self.config.block_comment_start.len()..]
-                    .find(self.config.block_comment_end.as_str())
-                {
-                    let close_byte = open_byte
-                        + self.config.block_comment_start.len()
-                        + rel_close_pos
-                        + self.config.block_comment_end.len();
-                    comment_ranges.push(open_byte..close_byte);
-                    search_start = close_byte;
-                } else {
-                    comment_ranges.push(open_byte..line.len());
-                    state.in_block_comment = true;
-                    break;
-                }
-            } else {
+            if is_in_string(open_byte) {
                 search_start = open_byte + self.config.block_comment_start.len();
+            } else if let Some(rel_close_pos) = line
+                [open_byte + self.config.block_comment_start.len()..]
+                .find(self.config.block_comment_end.as_str())
+            {
+                let close_byte = open_byte
+                    + self.config.block_comment_start.len()
+                    + rel_close_pos
+                    + self.config.block_comment_end.len();
+                comment_ranges.push(open_byte..close_byte);
+                search_start = close_byte;
+            } else {
+                comment_ranges.push(open_byte..line.len());
+                state.in_block_comment = true;
+                break;
             }
         }
         let is_in_comment = |byte_idx: usize| -> bool {
@@ -284,22 +277,21 @@ impl Highlighter for RustHighlighter {
                     || !line[..start]
                         .chars()
                         .last()
-                        .map_or(false, |c| c.is_alphanumeric() || c == '_');
+                        .is_some_and(|c| c.is_alphanumeric() || c == '_');
                 let is_word_boundary_after = end >= line.len()
                     || !line[end..]
                         .chars()
                         .next()
-                        .map_or(false, |c| c.is_alphanumeric() || c == '_');
+                        .is_some_and(|c| c.is_alphanumeric() || c == '_');
 
-                if is_word_boundary_before && is_word_boundary_after {
-                    if !is_in_string(start) && !is_in_comment(start) {
+                if is_word_boundary_before && is_word_boundary_after
+                    && !is_in_string(start) && !is_in_comment(start) {
                         annotations.push(HighlightAnnotation {
                             annotation_type: AnnotationType::PrimitiveType,
                             start,
                             end,
                         });
                     }
-                }
                 search_start = start + 1;
             }
         }
@@ -311,12 +303,12 @@ impl Highlighter for RustHighlighter {
                     || !line[..range.start]
                         .chars()
                         .last()
-                        .map_or(false, |c| c.is_alphanumeric() || c == '_');
+                        .is_some_and(|c| c.is_alphanumeric() || c == '_');
                 let is_word_boundary_after = range.end >= line.len()
                     || !line[range.end..]
                         .chars()
                         .next()
-                        .map_or(false, |c| c.is_alphanumeric() || c == '_');
+                        .is_some_and(|c| c.is_alphanumeric() || c == '_');
 
                 if is_word_boundary_before && is_word_boundary_after {
                     annotations.push(HighlightAnnotation {
@@ -404,7 +396,7 @@ impl Highlighter for RustHighlighter {
         (annotations, state)
     }
 
-    fn language_name(&self) -> &str {
+    fn language_name(&self) -> &'static str {
         "rust"
     }
 }

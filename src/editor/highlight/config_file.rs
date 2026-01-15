@@ -75,7 +75,7 @@ pub fn load_language_config(
     } else {
         get_config_dir()?
             .join("languages")
-            .join(format!("{}.toml", language))
+            .join(format!("{language}.toml"))
     };
 
     if !config_path.exists() {

@@ -53,7 +53,7 @@ impl HighlighterRegistry {
     pub fn get_highlighter(&self, file_extension: Option<&str>) -> Option<&dyn Highlighter> {
         let ext = file_extension?;
         let index = self.extension_map.get(ext)?;
-        self.highlighters.get(*index).map(|h| h.as_ref())
+        self.highlighters.get(*index).map(std::convert::AsRef::as_ref)
     }
 }
 

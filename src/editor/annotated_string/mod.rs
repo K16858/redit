@@ -28,7 +28,7 @@ impl AnnotatedString {
         debug_assert!(start <= end);
         self.annotations.push(Annotation {
             kind: annotation_type,
-            start: start,
+            start,
             end,
         });
     }

@@ -25,7 +25,7 @@ impl GenericHighlighter {
             #[cfg(debug_assertions)]
             {
                 use std::path::Path;
-                let path = format!("docs/examples/default/languages/{}.toml", language);
+                let path = format!("docs/examples/default/languages/{language}.toml");
                 if let Ok(lang_config) = load_language_config(language, Some(Path::new(&path))) {
                     let default = LanguageConfig {
                         keywords: vec![],
@@ -116,7 +116,7 @@ fn find_keyword_at(line: &str, keyword: &str, pos: usize) -> bool {
 }
 
 impl Highlighter for GenericHighlighter {
-    fn language_name(&self) -> &str {
+    fn language_name(&self) -> &'static str {
         "generic"
     }
 
@@ -154,19 +154,17 @@ impl Highlighter for GenericHighlighter {
                     block_comment_ranges.push(pos..line.len());
                     break;
                 }
-            } else {
-                if let Some(start_pos) = line[pos..].find(self.config.block_comment_start.as_str())
-                {
-                    let abs_start = pos + start_pos;
-                    if !is_in_string(abs_start) {
-                        state.in_block_comment = true;
-                        pos = abs_start + self.config.block_comment_start.len();
-                    } else {
-                        pos = abs_start + 1;
-                    }
+            } else if let Some(start_pos) = line[pos..].find(self.config.block_comment_start.as_str())
+            {
+                let abs_start = pos + start_pos;
+                if is_in_string(abs_start) {
+                    pos = abs_start + 1;
                 } else {
-                    break;
+                    state.in_block_comment = true;
+                    pos = abs_start + self.config.block_comment_start.len();
                 }
+            } else {
+                break;
             }
         }
 
@@ -185,15 +183,14 @@ impl Highlighter for GenericHighlighter {
         };
 
         // Line comments
-        if let Some(comment_start) = line.find(self.config.line_comment_start.as_str()) {
-            if !is_in_string(comment_start) && !is_in_block_comment(comment_start) {
+        if let Some(comment_start) = line.find(self.config.line_comment_start.as_str())
+            && !is_in_string(comment_start) && !is_in_block_comment(comment_start) {
                 annotations.push(HighlightAnnotation {
                     start: comment_start,
                     end: line.len(),
                     annotation_type: AnnotationType::Comment,
                 });
             }
-        }
 
         let is_in_comment = |pos: usize| -> bool {
             is_in_block_comment(pos) || {
@@ -206,7 +203,7 @@ impl Highlighter for GenericHighlighter {
         };
 
         // Keywords
-        for keyword in self.config.keywords.iter().map(|s| s.as_str()) {
+        for keyword in self.config.keywords.iter().map(std::string::String::as_str) {
             let mut search_pos = 0;
             while search_pos < line.len() {
                 if let Some(found_pos) = line[search_pos..].find(keyword) {
@@ -229,7 +226,7 @@ impl Highlighter for GenericHighlighter {
         }
 
         // Primitive types
-        for prim_type in self.config.primitive_types.iter().map(|s| s.as_str()) {
+        for prim_type in self.config.primitive_types.iter().map(std::string::String::as_str) {
             let mut search_pos = 0;
             while search_pos < line.len() {
                 if let Some(found_pos) = line[search_pos..].find(prim_type) {
@@ -260,21 +257,19 @@ impl Highlighter for GenericHighlighter {
 
             if ch.is_ascii_digit()
                 || (ch == '0'
-                    && chars.peek().map_or(false, |(_, next_ch)| {
+                    && chars.peek().is_some_and(|(_, next_ch)| {
                         *next_ch == 'x' || *next_ch == 'b' || *next_ch == 'o'
                     }))
             {
                 let start = idx;
                 let mut end = idx + 1;
 
-                if ch == '0' {
-                    if let Some((_, next_ch)) = chars.peek() {
-                        if *next_ch == 'x' || *next_ch == 'b' || *next_ch == 'o' {
+                if ch == '0'
+                    && let Some((_, next_ch)) = chars.peek()
+                        && (*next_ch == 'x' || *next_ch == 'b' || *next_ch == 'o') {
                             chars.next();
                             end += 1;
                         }
-                    }
-                }
 
                 while let Some(&(_, next_ch)) = chars.peek() {
                     if next_ch.is_alphanumeric() || next_ch == '_' || next_ch == '.' {
@@ -351,9 +346,7 @@ impl Highlighter for GenericHighlighter {
                 });
                 paren_level += 1;
             } else if ch == ')' {
-                if paren_level > 0 {
-                    paren_level -= 1;
-                }
+                paren_level = paren_level.saturating_sub(1);
                 let color_index = paren_level % 4;
                 let annotation_type = match color_index {
                     0 => AnnotationType::Bracket0,
@@ -381,9 +374,7 @@ impl Highlighter for GenericHighlighter {
                 });
                 brace_level += 1;
             } else if ch == '}' {
-                if brace_level > 0 {
-                    brace_level -= 1;
-                }
+                brace_level = brace_level.saturating_sub(1);
                 let color_index = (brace_level + 1) % 4;
                 let annotation_type = match color_index {
                     0 => AnnotationType::Bracket0,
@@ -411,9 +402,7 @@ impl Highlighter for GenericHighlighter {
                 });
                 bracket_level += 1;
             } else if ch == ']' {
-                if bracket_level > 0 {
-                    bracket_level -= 1;
-                }
+                bracket_level = bracket_level.saturating_sub(1);
                 let color_index = (bracket_level + 2) % 4;
                 let annotation_type = match color_index {
                     0 => AnnotationType::Bracket0,
