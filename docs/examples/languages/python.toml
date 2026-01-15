@@ -15,8 +15,8 @@ primitive_types = [
 ]
 
 line_comment_start = "#"
-block_comment_start = '"""'
-block_comment_end = '"""'
+block_comment_start = ""
+block_comment_end = ""
 
 [[brackets]]
 open = "("
