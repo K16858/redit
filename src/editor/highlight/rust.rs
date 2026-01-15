@@ -26,14 +26,18 @@ impl RustHighlighter {
 
 fn find_string_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
     let mut ranges = Vec::new();
-    let mut in_string = false;
+    let mut in_double_quote = false;
+    let mut in_single_quote = false;
     let mut string_start = 0;
     let mut chars = string.char_indices().peekable();
 
     while let Some((byte_idx, ch)) = chars.next() {
-        if !in_string {
+        if !in_double_quote && !in_single_quote {
             if ch == '"' {
-                in_string = true;
+                in_double_quote = true;
+                string_start = byte_idx;
+            } else if ch == '\'' {
+                in_single_quote = true;
                 string_start = byte_idx;
             }
         } else {
@@ -41,8 +45,11 @@ fn find_string_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
                 chars.next();
                 continue;
             }
-            if ch == '"' {
-                in_string = false;
+            if ch == '"' && in_double_quote {
+                in_double_quote = false;
+                ranges.push(string_start..byte_idx + ch.len_utf8());
+            } else if ch == '\'' && in_single_quote {
+                in_single_quote = false;
                 ranges.push(string_start..byte_idx + ch.len_utf8());
             }
         }

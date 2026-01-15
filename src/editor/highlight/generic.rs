@@ -56,7 +56,8 @@ impl GenericHighlighter {
 
 fn find_string_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
     let mut ranges = Vec::new();
-    let mut in_string = false;
+    let mut in_double_quote = false;
+    let mut in_single_quote = false;
     let mut escape_next = false;
     let mut start = 0;
 
@@ -66,18 +67,26 @@ fn find_string_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
             continue;
         }
 
-        if ch == '\\' && in_string {
+        if ch == '\\' && (in_double_quote || in_single_quote) {
             escape_next = true;
             continue;
         }
 
-        if ch == '"' {
-            if in_string {
+        if ch == '"' && !in_single_quote {
+            if in_double_quote {
                 ranges.push(start..idx + 1);
-                in_string = false;
+                in_double_quote = false;
             } else {
                 start = idx;
-                in_string = true;
+                in_double_quote = true;
+            }
+        } else if ch == '\'' && !in_double_quote {
+            if in_single_quote {
+                ranges.push(start..idx + 1);
+                in_single_quote = false;
+            } else {
+                start = idx;
+                in_single_quote = true;
             }
         }
     }
