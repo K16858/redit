@@ -160,16 +160,24 @@ impl Highlighter for GenericHighlighter {
         if !self.config.block_comment_start.is_empty() && !self.config.block_comment_end.is_empty()
         {
             let mut pos = 0;
+            let mut comment_start_pos = if state.in_block_comment {
+                Some(0)
+            } else {
+                None
+            };
+
             while pos < line.len() {
                 if state.in_block_comment {
                     if let Some(end_pos) = line[pos..].find(self.config.block_comment_end.as_str())
                     {
                         let abs_end = pos + end_pos + self.config.block_comment_end.len();
-                        block_comment_ranges.push(pos..abs_end);
+                        let start = comment_start_pos.unwrap_or(0);
+                        block_comment_ranges.push(start..abs_end);
                         state.in_block_comment = false;
+                        comment_start_pos = None;
                         pos = abs_end;
                     } else {
-                        block_comment_ranges.push(pos..line.len());
+                        block_comment_ranges.push(comment_start_pos.unwrap_or(0)..line.len());
                         break;
                     }
                 } else if let Some(start_pos) =
@@ -180,6 +188,7 @@ impl Highlighter for GenericHighlighter {
                         pos = abs_start + 1;
                     } else {
                         state.in_block_comment = true;
+                        comment_start_pos = Some(abs_start);
                         pos = abs_start + self.config.block_comment_start.len();
                     }
                 } else {
