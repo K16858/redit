@@ -1,6 +1,6 @@
+use super::Highlighter;
 use super::generic::GenericHighlighter;
 use super::rust::RustHighlighter;
-use super::Highlighter;
 use std::collections::HashMap;
 
 pub struct HighlighterRegistry {
@@ -18,8 +18,12 @@ impl HighlighterRegistry {
         registry.register(Box::new(RustHighlighter::new()), vec!["rs".to_string()]);
 
         // Register Python (file-only)
+        eprintln!("DEBUG: Attempting to register Python highlighter");
         if let Some(highlighter) = GenericHighlighter::new("python") {
+            eprintln!("DEBUG: Successfully created Python highlighter, registering for .py");
             registry.register(Box::new(highlighter), vec!["py".to_string()]);
+        } else {
+            eprintln!("DEBUG: Failed to create Python highlighter");
         }
 
         // Register JavaScript (file-only)
@@ -53,7 +57,9 @@ impl HighlighterRegistry {
     pub fn get_highlighter(&self, file_extension: Option<&str>) -> Option<&dyn Highlighter> {
         let ext = file_extension?;
         let index = self.extension_map.get(ext)?;
-        self.highlighters.get(*index).map(std::convert::AsRef::as_ref)
+        self.highlighters
+            .get(*index)
+            .map(std::convert::AsRef::as_ref)
     }
 }
 

@@ -6,11 +6,17 @@ use crate::editor::highlight::{
 
 pub struct GenericHighlighter {
     config: LanguageConfig,
+    language_name: String,
 }
 
 impl GenericHighlighter {
     pub fn new(language: &str) -> Option<Self> {
+        eprintln!(
+            "DEBUG: GenericHighlighter::new called for language: {}",
+            language
+        );
         let config = if let Ok(lang_config) = load_language_config(language, None) {
+            eprintln!("DEBUG: Successfully loaded user config for {}", language);
             let default = LanguageConfig {
                 keywords: vec![],
                 primitive_types: vec![],
@@ -21,12 +27,15 @@ impl GenericHighlighter {
             };
             merge_config(&default, Some(&lang_config))
         } else {
+            eprintln!("DEBUG: User config not found, trying default config");
             // Try to load from default config in debug builds
             #[cfg(debug_assertions)]
             {
                 use std::path::Path;
                 let path = format!("docs/examples/default/languages/{language}.toml");
+                eprintln!("DEBUG: Trying to load from: {}", path);
                 if let Ok(lang_config) = load_language_config(language, Some(Path::new(&path))) {
+                    eprintln!("DEBUG: Successfully loaded default config for {}", language);
                     let default = LanguageConfig {
                         keywords: vec![],
                         primitive_types: vec![],
@@ -37,6 +46,7 @@ impl GenericHighlighter {
                     };
                     merge_config(&default, Some(&lang_config))
                 } else {
+                    eprintln!("DEBUG: Failed to load default config for {}", language);
                     return None;
                 }
             }
@@ -47,7 +57,11 @@ impl GenericHighlighter {
             }
         };
 
-        Some(Self { config })
+        eprintln!("DEBUG: Successfully created {} highlighter", language);
+        Some(Self {
+            config,
+            language_name: language.to_string(),
+        })
     }
 }
 
@@ -116,8 +130,8 @@ fn find_keyword_at(line: &str, keyword: &str, pos: usize) -> bool {
 }
 
 impl Highlighter for GenericHighlighter {
-    fn language_name(&self) -> &'static str {
-        "generic"
+    fn language_name(&self) -> &str {
+        &self.language_name
     }
 
     #[allow(clippy::too_many_lines)]
@@ -143,30 +157,34 @@ impl Highlighter for GenericHighlighter {
 
         // Block comments
         let mut block_comment_ranges = Vec::new();
-        let mut pos = 0;
-        while pos < line.len() {
-            if state.in_block_comment {
-                if let Some(end_pos) = line[pos..].find(self.config.block_comment_end.as_str()) {
-                    let abs_end = pos + end_pos + self.config.block_comment_end.len();
-                    block_comment_ranges.push(pos..abs_end);
-                    state.in_block_comment = false;
-                    pos = abs_end;
+        if !self.config.block_comment_start.is_empty() && !self.config.block_comment_end.is_empty()
+        {
+            let mut pos = 0;
+            while pos < line.len() {
+                if state.in_block_comment {
+                    if let Some(end_pos) = line[pos..].find(self.config.block_comment_end.as_str())
+                    {
+                        let abs_end = pos + end_pos + self.config.block_comment_end.len();
+                        block_comment_ranges.push(pos..abs_end);
+                        state.in_block_comment = false;
+                        pos = abs_end;
+                    } else {
+                        block_comment_ranges.push(pos..line.len());
+                        break;
+                    }
+                } else if let Some(start_pos) =
+                    line[pos..].find(self.config.block_comment_start.as_str())
+                {
+                    let abs_start = pos + start_pos;
+                    if is_in_string(abs_start) {
+                        pos = abs_start + 1;
+                    } else {
+                        state.in_block_comment = true;
+                        pos = abs_start + self.config.block_comment_start.len();
+                    }
                 } else {
-                    block_comment_ranges.push(pos..line.len());
                     break;
                 }
-            } else if let Some(start_pos) =
-                line[pos..].find(self.config.block_comment_start.as_str())
-            {
-                let abs_start = pos + start_pos;
-                if is_in_string(abs_start) {
-                    pos = abs_start + 1;
-                } else {
-                    state.in_block_comment = true;
-                    pos = abs_start + self.config.block_comment_start.len();
-                }
-            } else {
-                break;
             }
         }
 

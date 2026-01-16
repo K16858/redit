@@ -397,7 +397,7 @@ impl Highlighter for RustHighlighter {
         (annotations, state)
     }
 
-    fn language_name(&self) -> &'static str {
-        "rust"
+    fn language_name(&self) -> &str {
+        "Rust"
     }
 }

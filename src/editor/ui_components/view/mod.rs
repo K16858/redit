@@ -31,14 +31,20 @@ pub struct View {
 
 impl View {
     pub fn get_status(&self) -> DocumentStatus {
-        let language_name = self
+        let extension = self
             .buffer
             .file_info
             .get_path()
             .and_then(|p| p.extension())
-            .and_then(|ext| ext.to_str())
-            .and_then(|ext| self.highlighter_registry.get_highlighter(Some(ext)))
-            .map(|h| h.language_name().to_string());
+            .and_then(|ext| ext.to_str());
+
+        let language_name = extension
+            .and_then(|ext| {
+                let hl = self.highlighter_registry.get_highlighter(Some(ext));
+                hl.map(|h| format!("{} [ext:{}]", h.language_name(), ext))
+            })
+            .or_else(|| extension.map(|ext| format!("No highlighter [ext:{}]", ext)));
+
         DocumentStatus {
             total_lines: self.buffer.height(),
             current_line_idx: self.text_location.line_idx,
@@ -67,13 +73,23 @@ impl View {
         let Size { height, width } = self.size;
         let top = self.scroll_offset.row;
 
-        let highlighter = self
+        let extension = self
             .buffer
             .file_info
             .get_path()
             .and_then(|p| p.extension())
-            .and_then(|ext| ext.to_str())
-            .and_then(|ext| self.highlighter_registry.get_highlighter(Some(ext)));
+            .and_then(|ext| ext.to_str());
+
+        eprintln!("DEBUG render_buffer: file extension = {:?}", extension);
+
+        let highlighter = extension.and_then(|ext| {
+            let hl = self.highlighter_registry.get_highlighter(Some(ext));
+            eprintln!("DEBUG render_buffer: highlighter found = {}", hl.is_some());
+            if let Some(h) = hl {
+                eprintln!("DEBUG render_buffer: language = {}", h.language_name());
+            }
+            hl
+        });
 
         let mut state = HighlightState::default();
         if let Some(hl) = highlighter {
