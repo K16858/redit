@@ -1,11 +1,12 @@
 use super::super::{
     DocumentStatus, Line, NAME, Position, Size, VERSION,
     command::{Edit, Move},
-    highlight::{HighlightState, HighlighterRegistry},
+    highlight::{HighlightAnnotation, HighlightState, HighlighterRegistry},
     terminal::Terminal,
 };
 use super::UIComponent;
 use std::cmp::min;
+use std::collections::HashMap;
 mod buffer;
 use buffer::Buffer;
 use std::io::Error;
@@ -18,6 +19,8 @@ use location::Location;
 mod search_direction;
 use search_direction::SearchDirection;
 
+type HighlightCache = HashMap<usize, (Vec<HighlightAnnotation>, HighlightState)>;
+
 #[derive(Default)]
 pub struct View {
     buffer: Buffer,
@@ -27,6 +30,8 @@ pub struct View {
     scroll_offset: Position,
     search_info: Option<SearchInfo>,
     highlighter_registry: HighlighterRegistry,
+    highlight_cache: HighlightCache,
+    cache_version: u64,
 }
 
 impl View {
