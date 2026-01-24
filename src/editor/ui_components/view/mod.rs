@@ -110,15 +110,41 @@ impl View {
                     .and_then(|search_info| search_info.query.as_deref());
                 let selected_match = (self.text_location.line_idx == line_idx && query.is_some())
                     .then_some(self.text_location.grapheme_idx);
-                let (annotated_string, new_state) = line.get_annotated_visible_substr(
-                    left..right,
-                    query,
-                    selected_match,
-                    highlighter,
-                    state,
-                );
-                state = new_state;
-                Terminal::print_annotated_row(screen_row, &annotated_string)?;
+
+                if let Some((_, cached_state)) = self.highlight_cache.get(&line_idx) {
+                    let (annotated_string, new_state) = line.get_annotated_visible_substr(
+                        left..right,
+                        query,
+                        selected_match,
+                        highlighter,
+                        *cached_state,
+                    );
+                    state = new_state;
+                    Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                } else if let Some(hl) = highlighter {
+                    let (annotations, new_state) = hl.highlight_line(line, line_idx, state);
+                    self.highlight_cache
+                        .insert(line_idx, (annotations, new_state));
+                    let (annotated_string, final_state) = line.get_annotated_visible_substr(
+                        left..right,
+                        query,
+                        selected_match,
+                        highlighter,
+                        new_state,
+                    );
+                    state = final_state;
+                    Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                } else {
+                    let (annotated_string, new_state) = line.get_annotated_visible_substr(
+                        left..right,
+                        query,
+                        selected_match,
+                        None,
+                        state,
+                    );
+                    state = new_state;
+                    Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                }
             } else {
                 Self::render_line(draw_row, "~")?;
                 state = HighlightState::default();
