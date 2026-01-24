@@ -18,12 +18,8 @@ impl HighlighterRegistry {
         registry.register(Box::new(RustHighlighter::new()), vec!["rs".to_string()]);
 
         // Register Python (file-only)
-        eprintln!("DEBUG: Attempting to register Python highlighter");
         if let Some(highlighter) = GenericHighlighter::new("python") {
-            eprintln!("DEBUG: Successfully created Python highlighter, registering for .py");
             registry.register(Box::new(highlighter), vec!["py".to_string()]);
-        } else {
-            eprintln!("DEBUG: Failed to create Python highlighter");
         }
 
         // Register JavaScript (file-only)

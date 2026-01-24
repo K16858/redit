@@ -11,12 +11,7 @@ pub struct GenericHighlighter {
 
 impl GenericHighlighter {
     pub fn new(language: &str) -> Option<Self> {
-        eprintln!(
-            "DEBUG: GenericHighlighter::new called for language: {}",
-            language
-        );
         let config = if let Ok(lang_config) = load_language_config(language, None) {
-            eprintln!("DEBUG: Successfully loaded user config for {}", language);
             let default = LanguageConfig {
                 keywords: vec![],
                 primitive_types: vec![],
@@ -27,15 +22,11 @@ impl GenericHighlighter {
             };
             merge_config(&default, Some(&lang_config))
         } else {
-            eprintln!("DEBUG: User config not found, trying default config");
-            // Try to load from default config in debug builds
             #[cfg(debug_assertions)]
             {
                 use std::path::Path;
                 let path = format!("docs/examples/default/languages/{language}.toml");
-                eprintln!("DEBUG: Trying to load from: {}", path);
                 if let Ok(lang_config) = load_language_config(language, Some(Path::new(&path))) {
-                    eprintln!("DEBUG: Successfully loaded default config for {}", language);
                     let default = LanguageConfig {
                         keywords: vec![],
                         primitive_types: vec![],
@@ -46,7 +37,6 @@ impl GenericHighlighter {
                     };
                     merge_config(&default, Some(&lang_config))
                 } else {
-                    eprintln!("DEBUG: Failed to load default config for {}", language);
                     return None;
                 }
             }
@@ -57,16 +47,12 @@ impl GenericHighlighter {
             }
         };
 
-        eprintln!("DEBUG: Successfully created {} highlighter", language);
         Some(Self {
             config,
             language_name: language.to_string(),
         })
     }
 }
-
-// The rest of the implementation is identical to RustHighlighter
-// (Copy all the helper functions and impl Highlighter from rust.rs)
 
 fn find_string_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
     let mut ranges = Vec::new();

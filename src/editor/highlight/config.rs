@@ -81,9 +81,10 @@ fn hardcoded_rust_config() -> LanguageConfig {
     }
 }
 
-use crate::editor::highlight::config_file::{
-    BracketConfigFile, LanguageConfigFile, load_language_config,
-};
+use crate::editor::highlight::config_file::{BracketConfigFile, LanguageConfigFile};
+
+#[cfg(debug_assertions)]
+use crate::editor::highlight::config_file::load_language_config;
 
 pub fn merge_config(
     default: &LanguageConfig,
