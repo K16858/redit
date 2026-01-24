@@ -85,8 +85,14 @@ impl View {
         if let Some(hl) = highlighter {
             for line_idx in 0..top {
                 if let Some(line) = self.buffer.lines.get(line_idx) {
-                    let (_, new_state) = hl.highlight_line(line, line_idx, state);
-                    state = new_state;
+                    // キャッシュから取得を試みる
+                    if let Some((_, cached_state)) = self.highlight_cache.get(&line_idx) {
+                        state = *cached_state;
+                    } else {
+                        // キャッシュにない場合は従来通りハイライト
+                        let (_, new_state) = hl.highlight_line(line, line_idx, state);
+                        state = new_state;
+                    }
                 }
             }
         }
