@@ -1,5 +1,5 @@
 pub mod highlighter;
-pub use highlighter::{HighlightAnnotation, HighlightState, Highlighter};
+pub use highlighter::{HighlightAnnotation, HighlightState, Highlighter, StringType};
 
 pub mod config;
 pub use config::{LanguageConfig, default_rust_config, merge_config};

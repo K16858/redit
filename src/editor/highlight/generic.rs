@@ -1,7 +1,8 @@
 use super::Highlighter;
 use crate::editor::annotated_string::AnnotationType;
 use crate::editor::highlight::{
-    HighlightAnnotation, HighlightState, LanguageConfig, load_language_config, merge_config,
+    HighlightAnnotation, HighlightState, LanguageConfig, StringType, load_language_config,
+    merge_config,
 };
 
 pub struct GenericHighlighter {
@@ -54,44 +55,141 @@ impl GenericHighlighter {
     }
 }
 
-fn find_string_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
+fn find_string_ranges(
+    string: &str,
+    state: &mut HighlightState,
+) -> (Vec<std::ops::Range<usize>>, Option<usize>) {
     let mut ranges = Vec::new();
-    let mut in_double_quote = false;
-    let mut in_single_quote = false;
     let mut escape_next = false;
-    let mut start = 0;
+    let mut start = if state.in_string.is_some() {
+        Some(0)
+    } else {
+        None
+    };
 
-    for (idx, ch) in string.char_indices() {
+    let chars: Vec<(usize, char)> = string.char_indices().collect();
+    let mut idx = 0;
+
+    while idx < chars.len() {
+        let (byte_idx, ch) = chars[idx];
+
         if escape_next {
             escape_next = false;
+            idx += 1;
             continue;
         }
 
-        if ch == '\\' && (in_double_quote || in_single_quote) {
+        if ch == '\\' && state.in_string.is_some() {
             escape_next = true;
+            idx += 1;
             continue;
         }
 
-        if ch == '"' && !in_single_quote {
-            if in_double_quote {
-                ranges.push(start..idx + 1);
-                in_double_quote = false;
-            } else {
-                start = idx;
-                in_double_quote = true;
+        match state.in_string {
+            Some(StringType::DoubleQuote) => {
+                if ch == '"' {
+                    let start_pos = start.unwrap_or(0);
+                    ranges.push(start_pos..byte_idx + 1);
+                    state.in_string = None;
+                    start = None;
+                }
+                idx += 1;
             }
-        } else if ch == '\'' && !in_double_quote {
-            if in_single_quote {
-                ranges.push(start..idx + 1);
-                in_single_quote = false;
-            } else {
-                start = idx;
-                in_single_quote = true;
+            Some(StringType::SingleQuote) => {
+                if ch == '\'' {
+                    let start_pos = start.unwrap_or(0);
+                    ranges.push(start_pos..byte_idx + 1);
+                    state.in_string = None;
+                    start = None;
+                }
+                idx += 1;
+            }
+            Some(StringType::TripleDoubleQuote) => {
+                // Check for """ to end triple quote
+                if ch == '"' && idx + 2 < chars.len() {
+                    let (_, ch2) = chars[idx + 1];
+                    let (_, ch3) = chars[idx + 2];
+                    if ch2 == '"' && ch3 == '"' {
+                        let start_pos = start.unwrap_or(0);
+                        ranges.push(start_pos..byte_idx + 3);
+                        state.in_string = None;
+                        start = None;
+                        idx += 3;
+                        continue;
+                    }
+                }
+                idx += 1;
+            }
+            Some(StringType::TripleSingleQuote) => {
+                // Check for ''' to end triple quote
+                if ch == '\'' && idx + 2 < chars.len() {
+                    let (_, ch2) = chars[idx + 1];
+                    let (_, ch3) = chars[idx + 2];
+                    if ch2 == '\'' && ch3 == '\'' {
+                        let start_pos = start.unwrap_or(0);
+                        ranges.push(start_pos..byte_idx + 3);
+                        state.in_string = None;
+                        start = None;
+                        idx += 3;
+                        continue;
+                    }
+                }
+                idx += 1;
+            }
+            Some(StringType::Backtick) => {
+                if ch == '`' {
+                    let start_pos = start.unwrap_or(0);
+                    ranges.push(start_pos..byte_idx + 1);
+                    state.in_string = None;
+                    start = None;
+                }
+                idx += 1;
+            }
+            None => {
+                // Check for triple quotes first
+                if ch == '"' && idx + 2 < chars.len() {
+                    let (_, ch2) = chars[idx + 1];
+                    let (_, ch3) = chars[idx + 2];
+                    if ch2 == '"' && ch3 == '"' {
+                        start = Some(byte_idx);
+                        state.in_string = Some(StringType::TripleDoubleQuote);
+                        idx += 3;
+                        continue;
+                    }
+                }
+                if ch == '\'' && idx + 2 < chars.len() {
+                    let (_, ch2) = chars[idx + 1];
+                    let (_, ch3) = chars[idx + 2];
+                    if ch2 == '\'' && ch3 == '\'' {
+                        start = Some(byte_idx);
+                        state.in_string = Some(StringType::TripleSingleQuote);
+                        idx += 3;
+                        continue;
+                    }
+                }
+                // Regular quotes
+                if ch == '"' {
+                    start = Some(byte_idx);
+                    state.in_string = Some(StringType::DoubleQuote);
+                } else if ch == '\'' {
+                    start = Some(byte_idx);
+                    state.in_string = Some(StringType::SingleQuote);
+                } else if ch == '`' {
+                    start = Some(byte_idx);
+                    state.in_string = Some(StringType::Backtick);
+                }
+                idx += 1;
             }
         }
     }
 
-    ranges
+    let continuation_start = if state.in_string.is_some() {
+        start.or(Some(0))
+    } else {
+        None
+    };
+
+    (ranges, continuation_start)
 }
 
 fn is_word_boundary(ch: char) -> bool {
@@ -129,7 +227,7 @@ impl Highlighter for GenericHighlighter {
     ) -> (Vec<HighlightAnnotation>, HighlightState) {
         let mut annotations = Vec::new();
 
-        let string_ranges = find_string_ranges(line);
+        let (string_ranges, continuation_start) = find_string_ranges(line, &mut state);
         for range in &string_ranges {
             annotations.push(HighlightAnnotation {
                 start: range.start,
@@ -138,8 +236,22 @@ impl Highlighter for GenericHighlighter {
             });
         }
 
-        let is_in_string =
-            |pos: usize| -> bool { string_ranges.iter().any(|range| range.contains(&pos)) };
+        // If string continues to next line, highlight from start to end of line
+        if let Some(start_pos) = continuation_start {
+            annotations.push(HighlightAnnotation {
+                start: start_pos,
+                end: line.len(),
+                annotation_type: AnnotationType::String,
+            });
+        }
+
+        let continuation_range = continuation_start.map(|start| start..line.len());
+        let is_in_string = |pos: usize| -> bool {
+            string_ranges.iter().any(|range| range.contains(&pos))
+                || continuation_range
+                    .as_ref()
+                    .map_or(false, |range| range.contains(&pos))
+        };
 
         // Block comments
         let mut block_comment_ranges = Vec::new();

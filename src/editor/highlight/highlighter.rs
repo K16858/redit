@@ -12,6 +12,16 @@ pub struct HighlightState {
     pub paren_level: usize,
     pub brace_level: usize,
     pub bracket_level: usize,
+    pub in_string: Option<StringType>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum StringType {
+    DoubleQuote,
+    SingleQuote,
+    Backtick,
+    TripleDoubleQuote,
+    TripleSingleQuote,
 }
 
 pub trait Highlighter: Send + Sync {
