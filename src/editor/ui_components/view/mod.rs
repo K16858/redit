@@ -69,7 +69,7 @@ impl View {
         Ok(())
     }
 
-    fn render_buffer(&self, origin_y: usize) -> Result<(), Error> {
+    fn render_buffer(&mut self, origin_y: usize) -> Result<(), Error> {
         let Size { height, width } = self.size;
         let top = self.scroll_offset.row;
 
@@ -85,12 +85,12 @@ impl View {
         if let Some(hl) = highlighter {
             for line_idx in 0..top {
                 if let Some(line) = self.buffer.lines.get(line_idx) {
-                    // キャッシュから取得を試みる
                     if let Some((_, cached_state)) = self.highlight_cache.get(&line_idx) {
                         state = *cached_state;
                     } else {
-                        // キャッシュにない場合は従来通りハイライト
-                        let (_, new_state) = hl.highlight_line(line, line_idx, state);
+                        let (annotations, new_state) = hl.highlight_line(line, line_idx, state);
+                        self.highlight_cache
+                            .insert(line_idx, (annotations, new_state));
                         state = new_state;
                     }
                 }
