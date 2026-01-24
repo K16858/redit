@@ -462,12 +462,11 @@ impl Highlighter for GenericHighlighter {
             }
         }
 
-        // Type names (capitalized identifiers)
-        let mut chars = line.chars().enumerate().peekable();
+        let mut chars = line.char_indices().peekable();
         let mut prev_char: Option<char> = None;
 
-        while let Some((idx, ch)) = chars.next() {
-            if is_in_string(idx) || is_in_comment(idx) {
+        while let Some((byte_idx, ch)) = chars.next() {
+            if is_in_string(byte_idx) || is_in_comment(byte_idx) {
                 prev_char = Some(ch);
                 continue;
             }
@@ -481,21 +480,20 @@ impl Highlighter for GenericHighlighter {
                     }
                 }
 
-                let start = idx;
-                let mut end = idx + 1;
+                let start = byte_idx;
+                let mut end = start + ch.len_utf8();
 
-                while let Some(&(_, next_ch)) = chars.peek() {
+                while let Some(&(next_byte_idx, next_ch)) = chars.peek() {
                     if next_ch.is_alphanumeric() || next_ch == '_' {
                         chars.next();
-                        end += 1;
+                        end = next_byte_idx + next_ch.len_utf8();
                     } else {
                         break;
                     }
                 }
 
-                // Also require a word boundary after the identifier
                 let mut next_char: Option<char> = None;
-                if let Some((_, ch_after)) = chars.peek().copied() {
+                if let Some(&(_, ch_after)) = chars.peek() {
                     next_char = Some(ch_after);
                 }
 
