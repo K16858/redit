@@ -1,5 +1,7 @@
 # Default Go Language Configuration
 
+extensions = ["go"]
+
 keywords = [
     "package", "import", "func", "var", "const", "type", "struct", "interface",
     "if", "else", "for", "range", "switch", "case", "default", "return",

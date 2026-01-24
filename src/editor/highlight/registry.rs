@@ -1,4 +1,5 @@
 use super::Highlighter;
+use super::config_file::discover_language_extensions;
 use super::generic::GenericHighlighter;
 use super::rust::RustHighlighter;
 use std::collections::HashMap;
@@ -17,25 +18,14 @@ impl HighlighterRegistry {
 
         registry.register(Box::new(RustHighlighter::new()), vec!["rs".to_string()]);
 
-        // Register Python (file-only)
-        if let Some(highlighter) = GenericHighlighter::new("python") {
-            registry.register(Box::new(highlighter), vec!["py".to_string()]);
-        }
+        for (language, extensions) in discover_language_extensions() {
+            if language.eq_ignore_ascii_case("rust") {
+                continue;
+            }
 
-        // Register JavaScript (file-only)
-        if let Some(highlighter) = GenericHighlighter::new("javascript") {
-            registry.register(
-                Box::new(highlighter),
-                vec!["js".to_string(), "jsx".to_string()],
-            );
-        }
-
-        // Register C (file-only)
-        if let Some(highlighter) = GenericHighlighter::new("c") {
-            registry.register(
-                Box::new(highlighter),
-                vec!["c".to_string(), "h".to_string()],
-            );
+            if let Some(highlighter) = GenericHighlighter::new(&language) {
+                registry.register(Box::new(highlighter), extensions);
+            }
         }
 
         registry

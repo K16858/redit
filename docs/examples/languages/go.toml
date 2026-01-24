@@ -2,6 +2,8 @@
 # Copy this file to ~/.config/den/languages/go.toml (or %APPDATA%\den\languages\go.toml on Windows)
 # to customize Go syntax highlighting
 
+extensions = ["go"]
+
 keywords = [
     "package", "import", "func", "var", "const", "type", "struct", "interface",
     "if", "else", "for", "range", "switch", "case", "default", "return",

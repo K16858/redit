@@ -2,6 +2,8 @@
 #
 # Copy this file to ~/.config/den/languages/python.toml
 
+extensions = ["py"]
+
 keywords = [
     "def", "class", "if", "elif", "else", "for", "while", "break", "continue",
     "return", "import", "from", "as", "try", "except", "finally", "raise",

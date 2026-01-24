@@ -2,6 +2,8 @@
 #
 # Copy this file to ~/.config/den/languages/javascript.toml
 
+extensions = ["js", "jsx"]
+
 keywords = [
     "function", "const", "let", "var", "if", "else", "for", "while", "do",
     "break", "continue", "return", "switch", "case", "default", "try", "catch",

@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -26,6 +27,7 @@ pub struct LanguageConfigFile {
     pub block_comment_start: Option<String>,
     pub block_comment_end: Option<String>,
     pub brackets: Option<Vec<BracketConfigFile>>,
+    pub extensions: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]
@@ -88,6 +90,63 @@ pub fn load_language_config(
     let config: LanguageConfigFile = toml::from_str(&contents).map_err(ConfigError::ParseError)?;
 
     Ok(config)
+}
+
+pub fn discover_language_extensions() -> Vec<(String, Vec<String>)> {
+    let mut map: HashMap<String, Vec<String>> = HashMap::new();
+
+    if let Ok(mut config_dir) = get_config_dir() {
+        config_dir.push("languages");
+        load_languages_from_dir(&config_dir, &mut map, false);
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        let default_dir = Path::new("docs/examples/default/languages");
+        load_languages_from_dir(default_dir, &mut map, true);
+    }
+
+    map.into_iter().collect()
+}
+
+fn load_languages_from_dir(dir: &Path, map: &mut HashMap<String, Vec<String>>, is_default: bool) {
+    let read_dir = match fs::read_dir(dir) {
+        Ok(rd) => rd,
+        Err(_) => return,
+    };
+
+    for entry in read_dir {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        let path = entry.path();
+
+        if path.extension().and_then(|ext| ext.to_str()) != Some("toml") {
+            continue;
+        }
+
+        let file_stem = match path.file_stem().and_then(|s| s.to_str()) {
+            Some(stem) => stem.to_string(),
+            None => continue,
+        };
+
+        if is_default && map.contains_key(&file_stem) {
+            continue;
+        }
+
+        let config = match load_language_config(&file_stem, Some(&path)) {
+            Ok(cfg) => cfg,
+            Err(_) => continue,
+        };
+
+        let exts = config
+            .extensions
+            .clone()
+            .unwrap_or_else(|| vec![file_stem.clone()]);
+
+        map.insert(file_stem, exts);
+    }
 }
 
 fn get_config_dir() -> Result<PathBuf, ConfigError> {

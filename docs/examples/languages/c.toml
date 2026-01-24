@@ -2,6 +2,8 @@
 #
 # Copy this file to ~/.config/den/languages/c.toml
 
+extensions = ["c", "h"]
+
 keywords = [
     "auto", "break", "case", "char", "const", "continue", "default", "do",
     "double", "else", "enum", "extern", "float", "for", "goto", "if",

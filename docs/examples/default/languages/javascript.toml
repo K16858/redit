@@ -1,5 +1,7 @@
 # Default JavaScript Language Configuration
 
+extensions = ["js", "jsx"]
+
 keywords = [
     "function", "const", "let", "var", "if", "else", "for", "while", "do",
     "break", "continue", "return", "switch", "case", "default", "try", "catch",
