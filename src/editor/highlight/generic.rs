@@ -196,6 +196,10 @@ fn is_word_boundary(ch: char) -> bool {
     !ch.is_alphanumeric() && ch != '_'
 }
 
+fn is_camel_case_boundary(prev_ch: char, next_ch: char) -> bool {
+    prev_ch.is_lowercase() && next_ch.is_uppercase()
+}
+
 fn find_keyword_at(line: &str, keyword: &str, pos: usize) -> bool {
     if pos + keyword.len() > line.len() {
         return false;
@@ -206,9 +210,44 @@ fn find_keyword_at(line: &str, keyword: &str, pos: usize) -> bool {
         return false;
     }
 
-    let before_ok = pos == 0 || is_word_boundary(line.chars().nth(pos - 1).unwrap());
-    let after_ok = pos + keyword.len() == line.len()
-        || is_word_boundary(line.chars().nth(pos + keyword.len()).unwrap());
+    let prev_char = if pos > 0 {
+        let mut prev = None;
+        for (byte_idx, ch) in line.char_indices() {
+            if byte_idx >= pos {
+                break;
+            }
+            prev = Some(ch);
+        }
+        prev
+    } else {
+        None
+    };
+
+    if let Some(keyword_first_char) = keyword.chars().next() {
+        if keyword_first_char.is_uppercase() {
+            if let Some(prev_ch) = prev_char {
+                if is_camel_case_boundary(prev_ch, keyword_first_char) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    let before_ok = prev_char.map_or(true, |ch| is_word_boundary(ch));
+
+    let after_pos = pos + keyword.len();
+    let after_ok = if after_pos >= line.len() {
+        true
+    } else {
+        let mut next_char = None;
+        for (byte_idx, ch) in line.char_indices() {
+            if byte_idx == after_pos {
+                next_char = Some(ch);
+                break;
+            }
+        }
+        next_char.map_or(true, |ch| is_word_boundary(ch))
+    };
 
     before_ok && after_ok
 }
@@ -425,12 +464,23 @@ impl Highlighter for GenericHighlighter {
 
         // Type names (capitalized identifiers)
         let mut chars = line.chars().enumerate().peekable();
+        let mut prev_char: Option<char> = None;
+
         while let Some((idx, ch)) = chars.next() {
             if is_in_string(idx) || is_in_comment(idx) {
+                prev_char = Some(ch);
                 continue;
             }
 
             if ch.is_uppercase() {
+                // Only consider this a type name start if the previous character is a word boundary
+                if let Some(prev) = prev_char {
+                    if !is_word_boundary(prev) {
+                        prev_char = Some(ch);
+                        continue;
+                    }
+                }
+
                 let start = idx;
                 let mut end = idx + 1;
 
@@ -443,17 +493,29 @@ impl Highlighter for GenericHighlighter {
                     }
                 }
 
-                let word = &line[start..end];
-                if !self.config.keywords.iter().any(|kw| kw == word)
-                    && !self.config.primitive_types.iter().any(|pt| pt == word)
-                {
-                    annotations.push(HighlightAnnotation {
-                        start,
-                        end,
-                        annotation_type: AnnotationType::Type,
-                    });
+                // Also require a word boundary after the identifier
+                let mut next_char: Option<char> = None;
+                if let Some((_, ch_after)) = chars.peek().copied() {
+                    next_char = Some(ch_after);
+                }
+
+                let after_ok = next_char.map_or(true, |c| is_word_boundary(c));
+
+                if after_ok {
+                    let word = &line[start..end];
+                    if !self.config.keywords.iter().any(|kw| kw == word)
+                        && !self.config.primitive_types.iter().any(|pt| pt == word)
+                    {
+                        annotations.push(HighlightAnnotation {
+                            start,
+                            end,
+                            annotation_type: AnnotationType::Type,
+                        });
+                    }
                 }
             }
+
+            prev_char = Some(ch);
         }
 
         // Brackets
