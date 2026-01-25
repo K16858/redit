@@ -19,7 +19,7 @@ use location::Location;
 mod search_direction;
 use search_direction::SearchDirection;
 
-type HighlightCache = HashMap<usize, (Vec<HighlightAnnotation>, HighlightState)>;
+type HighlightCache = HashMap<usize, (Vec<HighlightAnnotation>, HighlightState, u64)>;
 
 #[derive(Default)]
 pub struct View {
@@ -85,12 +85,21 @@ impl View {
         if let Some(hl) = highlighter {
             for line_idx in 0..top {
                 if let Some(line) = self.buffer.lines.get(line_idx) {
-                    if let Some((_, cached_state)) = self.highlight_cache.get(&line_idx) {
-                        state = *cached_state;
+                    if let Some((_, cached_state, cached_version)) =
+                        self.highlight_cache.get(&line_idx)
+                    {
+                        if *cached_version == self.cache_version {
+                            state = *cached_state;
+                        } else {
+                            let (annotations, new_state) = hl.highlight_line(line, line_idx, state);
+                            self.highlight_cache
+                                .insert(line_idx, (annotations, new_state, self.cache_version));
+                            state = new_state;
+                        }
                     } else {
                         let (annotations, new_state) = hl.highlight_line(line, line_idx, state);
                         self.highlight_cache
-                            .insert(line_idx, (annotations, new_state));
+                            .insert(line_idx, (annotations, new_state, self.cache_version));
                         state = new_state;
                     }
                 }
@@ -111,20 +120,46 @@ impl View {
                 let selected_match = (self.text_location.line_idx == line_idx && query.is_some())
                     .then_some(self.text_location.grapheme_idx);
 
-                if let Some((_, cached_state)) = self.highlight_cache.get(&line_idx) {
-                    let (annotated_string, new_state) = line.get_annotated_visible_substr(
-                        left..right,
-                        query,
-                        selected_match,
-                        highlighter,
-                        *cached_state,
-                    );
-                    state = new_state;
-                    Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                if let Some((_, cached_state, cached_version)) = self.highlight_cache.get(&line_idx)
+                {
+                    if *cached_version == self.cache_version {
+                        let (annotated_string, new_state) = line.get_annotated_visible_substr(
+                            left..right,
+                            query,
+                            selected_match,
+                            highlighter,
+                            *cached_state,
+                        );
+                        state = new_state;
+                        Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                    } else if let Some(hl) = highlighter {
+                        let (annotations, new_state) = hl.highlight_line(line, line_idx, state);
+                        self.highlight_cache
+                            .insert(line_idx, (annotations, new_state, self.cache_version));
+                        let (annotated_string, final_state) = line.get_annotated_visible_substr(
+                            left..right,
+                            query,
+                            selected_match,
+                            highlighter,
+                            new_state,
+                        );
+                        state = final_state;
+                        Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                    } else {
+                        let (annotated_string, new_state) = line.get_annotated_visible_substr(
+                            left..right,
+                            query,
+                            selected_match,
+                            None,
+                            state,
+                        );
+                        state = new_state;
+                        Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                    }
                 } else if let Some(hl) = highlighter {
                     let (annotations, new_state) = hl.highlight_line(line, line_idx, state);
                     self.highlight_cache
-                        .insert(line_idx, (annotations, new_state));
+                        .insert(line_idx, (annotations, new_state, self.cache_version));
                     let (annotated_string, final_state) = line.get_annotated_visible_substr(
                         left..right,
                         query,
