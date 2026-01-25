@@ -1,5 +1,6 @@
 use crate::editor::annotated_string::AnnotationType;
 
+#[derive(Clone)]
 pub struct HighlightAnnotation {
     pub annotation_type: AnnotationType,
     pub start: usize,

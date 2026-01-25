@@ -12,7 +12,7 @@ use text_fragment::TextFragment;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
-use super::highlight::Highlighter;
+use super::highlight::{HighlightAnnotation, Highlighter};
 use super::{AnnotatedString, AnnotationType};
 use crate::editor::highlight::HighlightState;
 
@@ -83,7 +83,7 @@ impl Line {
     }
 
     pub fn get_visible_graphemes(&self, range: Range<usize>) -> String {
-        self.get_annotated_visible_substr(range, None, None, None, HighlightState::default())
+        self.get_annotated_visible_substr(range, None, None, None, HighlightState::default(), None)
             .0
             .to_string()
     }
@@ -99,6 +99,7 @@ impl Line {
         selected_match: Option<usize>,
         highlighter: Option<&dyn Highlighter>,
         state: HighlightState,
+        cached_annotations: Option<&[HighlightAnnotation]>,
     ) -> (AnnotatedString, HighlightState) {
         if range.start >= range.end {
             return (AnnotatedString::default(), state);
@@ -106,7 +107,11 @@ impl Line {
 
         let mut result = AnnotatedString::from(&self.string);
         let mut new_state = state;
-        if let Some(hl) = highlighter {
+        if let Some(cached) = cached_annotations {
+            for highlight in cached {
+                result.add_annotation(highlight.annotation_type, highlight.start, highlight.end);
+            }
+        } else if let Some(hl) = highlighter {
             let (highlights, updated_state) = hl.highlight_line(&self.string, 0, state);
             new_state = updated_state;
             for highlight in highlights {
