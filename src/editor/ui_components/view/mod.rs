@@ -330,18 +330,22 @@ impl View {
         if grapheme_delta > 0 {
             self.handle_move_command(Move::Right);
         }
+        self.cache_version += 1;
         self.mark_redraw(true);
     }
 
     fn insert_newline(&mut self) {
         self.buffer.insert_newline(self.text_location);
         self.handle_move_command(Move::Right);
+        self.cache_version += 1;
         self.mark_redraw(true);
     }
 
     pub fn load(&mut self, file_name: &str) -> Result<(), Error> {
         let buffer = Buffer::load(file_name)?;
         self.buffer = buffer;
+        self.highlight_cache.clear();
+        self.cache_version += 1;
         self.mark_redraw(true);
         Ok(())
     }
@@ -355,6 +359,7 @@ impl View {
 
     fn delete(&mut self) {
         self.buffer.delete(self.text_location);
+        self.cache_version += 1;
         self.mark_redraw(true);
     }
 
