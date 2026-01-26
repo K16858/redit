@@ -4,16 +4,51 @@ use crossterm::event::{
 };
 
 #[derive(Clone, Copy)]
-pub enum Move {
+pub struct Move {
+    pub direction: MoveDirection,
+    pub is_selection: bool,
+}
+
+#[derive(Clone, Copy)]
+pub enum MoveDirection {
     PageUp,
     PageDown,
     LineStart,
     LineEnd,
-
     Up,
     Left,
     Right,
     Down,
+}
+
+impl Move {
+    pub fn up(is_selection: bool) -> Self {
+        Self {
+            direction: MoveDirection::Up,
+            is_selection,
+        }
+    }
+
+    pub fn down(is_selection: bool) -> Self {
+        Self {
+            direction: MoveDirection::Down,
+            is_selection,
+        }
+    }
+
+    pub fn left(is_selection: bool) -> Self {
+        Self {
+            direction: MoveDirection::Left,
+            is_selection,
+        }
+    }
+
+    pub fn right(is_selection: bool) -> Self {
+        Self {
+            direction: MoveDirection::Right,
+            is_selection,
+        }
+    }
 }
 
 impl TryFrom<KeyEvent> for Move {
@@ -22,16 +57,21 @@ impl TryFrom<KeyEvent> for Move {
         let KeyEvent {
             code, modifiers, ..
         } = event;
-        match (code, modifiers) {
-            (Up, KeyModifiers::CONTROL) => Ok(Self::PageUp),
-            (Down, KeyModifiers::CONTROL) => Ok(Self::PageDown),
-            (Left, KeyModifiers::CONTROL) => Ok(Self::LineStart),
-            (Right, KeyModifiers::CONTROL) => Ok(Self::LineEnd),
-            (Up, _) => Ok(Self::Up),
-            (Down, _) => Ok(Self::Down),
-            (Left, _) => Ok(Self::Left),
-            (Right, _) => Ok(Self::Right),
-            _ => Err(format!("Key Code not supported: {code:?}")),
-        }
+        let is_selection = modifiers.contains(KeyModifiers::SHIFT);
+        let direction = match (code, modifiers) {
+            (Up, KeyModifiers::CONTROL) => MoveDirection::PageUp,
+            (Down, KeyModifiers::CONTROL) => MoveDirection::PageDown,
+            (Left, KeyModifiers::CONTROL) => MoveDirection::LineStart,
+            (Right, KeyModifiers::CONTROL) => MoveDirection::LineEnd,
+            (Up, _) => MoveDirection::Up,
+            (Down, _) => MoveDirection::Down,
+            (Left, _) => MoveDirection::Left,
+            (Right, _) => MoveDirection::Right,
+            _ => return Err(format!("Key Code not supported: {code:?}")),
+        };
+        Ok(Self {
+            direction,
+            is_selection,
+        })
     }
 }

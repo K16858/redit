@@ -1,6 +1,6 @@
 use super::super::{
     DocumentStatus, Line, NAME, Position, Size, VERSION,
-    command::{Edit, Move},
+    command::{Edit, Move, MoveDirection},
     highlight::{HighlightAnnotation, HighlightState, HighlighterRegistry},
     terminal::Terminal,
 };
@@ -249,18 +249,32 @@ impl View {
         Position { col, row }
     }
 
-    pub fn handle_move_command(&mut self, direction: Move) {
+    pub fn handle_move_command(&mut self, move_cmd: Move) {
         let Size { height, .. } = self.size;
-        match direction {
-            Move::Up => self.move_up(1),
-            Move::Down => self.move_down(1),
-            Move::Left => self.move_left(),
-            Move::Right => self.move_right(),
-            Move::PageUp => self.move_up(height.saturating_sub(1)),
-            Move::PageDown => self.move_down(height.saturating_sub(1)),
-            Move::LineStart => self.move_to_start_of_line(),
-            Move::LineEnd => self.move_to_end_of_line(),
+
+        if move_cmd.is_selection {
+            if self.selection.is_none() {
+                self.start_selection();
+            }
+        } else {
+            self.clear_selection();
         }
+
+        match move_cmd.direction {
+            MoveDirection::Up => self.move_up(1),
+            MoveDirection::Down => self.move_down(1),
+            MoveDirection::Left => self.move_left(),
+            MoveDirection::Right => self.move_right(),
+            MoveDirection::PageUp => self.move_up(height.saturating_sub(1)),
+            MoveDirection::PageDown => self.move_down(height.saturating_sub(1)),
+            MoveDirection::LineStart => self.move_to_start_of_line(),
+            MoveDirection::LineEnd => self.move_to_end_of_line(),
+        }
+
+        if move_cmd.is_selection {
+            self.extend_selection();
+        }
+
         self.scroll_text_location_into_view();
     }
 
@@ -409,7 +423,7 @@ impl View {
 
         let grapheme_delta = new_len.saturating_sub(old_len);
         if grapheme_delta > 0 {
-            self.handle_move_command(Move::Right);
+            self.handle_move_command(Move::right(false));
         }
         self.cache_version += 1;
         self.mark_redraw(true);
@@ -417,7 +431,7 @@ impl View {
 
     fn insert_newline(&mut self) {
         self.buffer.insert_newline(self.text_location);
-        self.handle_move_command(Move::Right);
+        self.handle_move_command(Move::right(false));
         self.cache_version += 1;
         self.mark_redraw(true);
     }
@@ -433,7 +447,7 @@ impl View {
 
     fn backspace(&mut self) {
         if self.text_location.line_idx != 0 || self.text_location.grapheme_idx != 0 {
-            self.handle_move_command(Move::Left);
+            self.handle_move_command(Move::left(false));
             self.delete();
         }
     }

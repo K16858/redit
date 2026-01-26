@@ -2,7 +2,7 @@ use crossterm::event::Event;
 use std::convert::TryFrom;
 
 mod move_command;
-pub use move_command::Move;
+pub use move_command::{Move, MoveDirection};
 mod system;
 pub use system::System;
 mod edit;
