@@ -152,6 +152,12 @@ impl Line {
                 });
         }
 
+        if let Some(sel_range) = selection_range {
+            if sel_range.start < sel_range.end && sel_range.end <= self.string.len() {
+                result.add_annotation(AnnotationType::Selection, sel_range.start, sel_range.end);
+            }
+        }
+
         let mut fragment_start = self.width();
         for fragment in self.fragments.iter().rev() {
             let fragment_end = fragment_start;
