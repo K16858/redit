@@ -155,40 +155,24 @@ impl Line {
         let byte_start = self.display_width_to_byte_pos(range.start);
         let byte_end = self.display_width_to_byte_pos(range.end);
 
-        let mut fragment_start = self.width();
-        let mut left_truncated_bytes = 0;
-        for fragment in self.fragments.iter().rev() {
-            let fragment_end = fragment_start;
-            fragment_start = fragment_start.saturating_sub(fragment.rendered_width.into());
+        let left_truncated_bytes = if byte_start > 0 {
+            result.truncate_left_until(byte_start);
+            byte_start
+        } else {
+            0
+        };
+        if byte_end < self.string.len() {
+            result.truncate_right_from(byte_end);
+        }
 
-            if fragment_start > range.end {
-                continue;
-            }
-
-            if fragment_start < range.end && fragment_end > range.end {
-                result.replace(fragment.start, self.string.len(), "⋯");
-                continue;
-            } else if fragment_start == range.end {
-                result.truncate_right_from(fragment.start);
-                continue;
-            }
-
-            if fragment_end <= range.start {
-                let truncated = fragment.start.saturating_add(fragment.grapheme.len());
-                result.truncate_left_until(truncated);
-                left_truncated_bytes = truncated;
-                break;
-            } else if fragment_start < range.start && fragment_end > range.start {
-                let truncated = fragment.start.saturating_add(fragment.grapheme.len());
-                result.replace(0, truncated, "⋯");
-                left_truncated_bytes = truncated - "⋯".len();
-                break;
-            }
-
-            if fragment_start >= range.start
-                && fragment_end <= range.end
-                && let Some(replacement) = fragment.replacement
+        for fragment in &self.fragments {
+            if fragment.start >= byte_end
+                || fragment.start.saturating_add(fragment.grapheme.len()) <= byte_start
             {
+                continue;
+            }
+
+            if let Some(replacement) = fragment.replacement {
                 let start = fragment.start.saturating_sub(byte_start);
                 let end = start.saturating_add(fragment.grapheme.len());
                 let result_len = result.to_string().len();
