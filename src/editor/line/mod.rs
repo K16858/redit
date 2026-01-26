@@ -213,10 +213,16 @@ impl Line {
         let mut current_width = 0;
         for fragment in &self.fragments {
             let fragment_width: usize = fragment.rendered_width.into();
+            // Note:
+            // If the display_width falls within this fragment (including partial full-width characters),
+            // return the fragment's start byte position.
             if current_width + fragment_width > display_width {
                 return fragment.start;
             }
             current_width += fragment_width;
+            // Note:
+            // If the display_width exactly matches the end of this fragment,
+            // return the byte position after this fragment (start of next fragment).
             if current_width == display_width {
                 return fragment.start.saturating_add(fragment.grapheme.len());
             }
