@@ -152,13 +152,8 @@ impl Line {
                 });
         }
 
-        if let Some(sel_range) = selection_range {
-            if sel_range.start < sel_range.end && sel_range.end <= self.string.len() {
-                result.add_annotation(AnnotationType::Selection, sel_range.start, sel_range.end);
-            }
-        }
-
         let mut fragment_start = self.width();
+        let mut left_truncated_bytes = 0;
         for fragment in self.fragments.iter().rev() {
             let fragment_end = fragment_start;
             fragment_start = fragment_start.saturating_sub(fragment.rendered_width.into());
@@ -176,14 +171,14 @@ impl Line {
             }
 
             if fragment_end <= range.start {
-                result.truncate_left_until(fragment.start.saturating_add(fragment.grapheme.len()));
+                let truncated = fragment.start.saturating_add(fragment.grapheme.len());
+                result.truncate_left_until(truncated);
+                left_truncated_bytes = truncated;
                 break;
             } else if fragment_start < range.start && fragment_end > range.start {
-                result.replace(
-                    0,
-                    fragment.start.saturating_add(fragment.grapheme.len()),
-                    "⋯",
-                );
+                let truncated = fragment.start.saturating_add(fragment.grapheme.len());
+                result.replace(0, truncated, "⋯");
+                left_truncated_bytes = truncated - "⋯".len();
                 break;
             }
 
@@ -196,6 +191,20 @@ impl Line {
                 result.replace(start, end, &replacement.to_string());
             }
         }
+
+        if let Some(sel_range) = selection_range {
+            let adjusted_start = sel_range.start.saturating_sub(left_truncated_bytes);
+            let adjusted_end = sel_range.end.saturating_sub(left_truncated_bytes);
+            let result_len = result.to_string().len();
+
+            if adjusted_start < adjusted_end
+                && adjusted_start < result_len
+                && adjusted_end <= result_len
+            {
+                result.add_annotation(AnnotationType::Selection, adjusted_start, adjusted_end);
+            }
+        }
+
         (result, new_state)
     }
 
@@ -272,7 +281,11 @@ impl Line {
     }
 
     pub fn grapheme_to_byte_idx(&self, grapheme_idx: usize) -> usize {
-        self.grapheme_idx_to_byte_idx(grapheme_idx)
+        if grapheme_idx >= self.grapheme_count() {
+            self.string.len()
+        } else {
+            self.grapheme_idx_to_byte_idx(grapheme_idx)
+        }
     }
 
     pub fn line_length(&self) -> usize {
