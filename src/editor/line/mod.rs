@@ -83,9 +83,17 @@ impl Line {
     }
 
     pub fn get_visible_graphemes(&self, range: Range<usize>) -> String {
-        self.get_annotated_visible_substr(range, None, None, None, HighlightState::default(), None)
-            .0
-            .to_string()
+        self.get_annotated_visible_substr(
+            range,
+            None,
+            None,
+            None,
+            HighlightState::default(),
+            None,
+            None,
+        )
+        .0
+        .to_string()
     }
 
     pub fn grapheme_count(&self) -> usize {
@@ -100,6 +108,7 @@ impl Line {
         highlighter: Option<&dyn Highlighter>,
         state: HighlightState,
         cached_annotations: Option<&[HighlightAnnotation]>,
+        selection_range: Option<Range<usize>>,
     ) -> (AnnotatedString, HighlightState) {
         if range.start >= range.end {
             return (AnnotatedString::default(), state);

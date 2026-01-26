@@ -123,6 +123,13 @@ impl View {
                 let selected_match = (self.text_location.line_idx == line_idx && query.is_some())
                     .then_some(self.text_location.grapheme_idx);
 
+                let selection_range = self.selection.and_then(|sel| {
+                    sel.get_ranges(&self.buffer)
+                        .iter()
+                        .find(|(idx, _)| *idx == line_idx)
+                        .map(|(_, range)| range.clone())
+                });
+
                 if let Some((cached_annotations, cached_state, cached_version)) =
                     self.highlight_cache.get(&line_idx)
                 {
@@ -134,6 +141,7 @@ impl View {
                             highlighter,
                             *cached_state,
                             Some(cached_annotations),
+                            selection_range,
                         );
                         state = new_state;
                         Terminal::print_annotated_row(screen_row, &annotated_string)?;
@@ -150,6 +158,7 @@ impl View {
                             highlighter,
                             new_state,
                             Some(&annotations),
+                            selection_range,
                         );
                         state = final_state;
                         Terminal::print_annotated_row(screen_row, &annotated_string)?;
@@ -161,6 +170,7 @@ impl View {
                             None,
                             state,
                             None,
+                            selection_range,
                         );
                         state = new_state;
                         Terminal::print_annotated_row(screen_row, &annotated_string)?;
@@ -178,6 +188,7 @@ impl View {
                         highlighter,
                         new_state,
                         Some(&annotations),
+                        selection_range,
                     );
                     state = final_state;
                     Terminal::print_annotated_row(screen_row, &annotated_string)?;
@@ -189,6 +200,7 @@ impl View {
                         None,
                         state,
                         None,
+                        selection_range,
                     );
                     state = new_state;
                     Terminal::print_annotated_row(screen_row, &annotated_string)?;
