@@ -152,6 +152,9 @@ impl Line {
                 });
         }
 
+        let byte_start = self.display_width_to_byte_pos(range.start);
+        let byte_end = self.display_width_to_byte_pos(range.end);
+
         let mut fragment_start = self.width();
         let mut left_truncated_bytes = 0;
         for fragment in self.fragments.iter().rev() {
@@ -186,9 +189,12 @@ impl Line {
                 && fragment_end <= range.end
                 && let Some(replacement) = fragment.replacement
             {
-                let start = fragment.start;
+                let start = fragment.start.saturating_sub(byte_start);
                 let end = start.saturating_add(fragment.grapheme.len());
-                result.replace(start, end, &replacement.to_string());
+                let result_len = result.to_string().len();
+                if start < result_len && end <= result_len {
+                    result.replace(start, end, &replacement.to_string());
+                }
             }
         }
 
@@ -217,6 +223,21 @@ impl Line {
                 GraphemeWidth::Full => 2,
             })
             .sum()
+    }
+
+    pub fn display_width_to_byte_pos(&self, display_width: usize) -> usize {
+        let mut current_width = 0;
+        for fragment in &self.fragments {
+            let fragment_width: usize = fragment.rendered_width.into();
+            if current_width + fragment_width > display_width {
+                return fragment.start;
+            }
+            current_width += fragment_width;
+            if current_width >= display_width {
+                return fragment.start.saturating_add(fragment.grapheme.len());
+            }
+        }
+        self.string.len()
     }
 
     pub fn insert_char(&mut self, character: char, at: usize) {
@@ -265,7 +286,7 @@ impl Line {
         }
     }
 
-    fn byte_idx_to_grapheme_idx(&self, byte_idx: usize) -> Option<usize> {
+    pub fn byte_idx_to_grapheme_idx(&self, byte_idx: usize) -> Option<usize> {
         if byte_idx > self.string.len() {
             return None;
         }

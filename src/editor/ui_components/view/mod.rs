@@ -235,8 +235,25 @@ impl View {
     }
 
     pub fn caret_position(&self) -> Position {
-        self.text_location_to_position()
-            .saturating_sub(self.scroll_offset)
+        let Position { row, col } = self
+            .text_location_to_position()
+            .saturating_sub(self.scroll_offset);
+
+        if let Some(line) = self.buffer.lines.get(self.text_location.line_idx) {
+            let left = self.scroll_offset.col;
+            let byte_start = line.display_width_to_byte_pos(left);
+            if let Some(grapheme_idx) = line.byte_idx_to_grapheme_idx(byte_start) {
+                let left_truncated_width = line.width_until(grapheme_idx);
+                Position {
+                    row,
+                    col: col.saturating_sub(left_truncated_width),
+                }
+            } else {
+                Position { row, col }
+            }
+        } else {
+            Position { row, col }
+        }
     }
 
     fn text_location_to_position(&self) -> Position {
