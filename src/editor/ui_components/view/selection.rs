@@ -30,6 +30,7 @@ impl Selection {
         }
     }
 
+    #[allow(dead_code)]
     pub fn contains_location(&self, loc: Location) -> bool {
         let normalized = self.normalize();
         if loc.line_idx < normalized.start.line_idx || loc.line_idx > normalized.end.line_idx {

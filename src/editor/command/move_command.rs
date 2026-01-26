@@ -22,20 +22,6 @@ pub enum MoveDirection {
 }
 
 impl Move {
-    pub fn up(is_selection: bool) -> Self {
-        Self {
-            direction: MoveDirection::Up,
-            is_selection,
-        }
-    }
-
-    pub fn down(is_selection: bool) -> Self {
-        Self {
-            direction: MoveDirection::Down,
-            is_selection,
-        }
-    }
-
     pub fn left(is_selection: bool) -> Self {
         Self {
             direction: MoveDirection::Left,
