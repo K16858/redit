@@ -244,11 +244,20 @@ impl View {
 
     fn text_location_to_position(&self) -> Position {
         let row = self.text_location.line_idx;
-        let col = self
-            .buffer
-            .lines
-            .get(row)
-            .map_or(0, |line| line.width_until(self.text_location.grapheme_idx));
+        let col = self.buffer.lines.get(row).map_or(0, |line| {
+            // Note:
+            // grapheme_idx is "before the grapheme at that index"
+            // The caret position is "after the grapheme at that index"
+            // Therefore, we need to add the width of that grapheme
+            // This is calculated as width_until(grapheme_idx + 1)
+            // However, if grapheme_idx is at the end of the line (grapheme_count()),
+            // it means "after all graphemes", so we use width_until(grapheme_idx) as is
+            if self.text_location.grapheme_idx < line.grapheme_count() {
+                line.width_until(self.text_location.grapheme_idx + 1)
+            } else {
+                line.width_until(self.text_location.grapheme_idx)
+            }
+        });
         Position { col, row }
     }
 
