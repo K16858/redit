@@ -352,6 +352,27 @@ impl View {
         self.scroll_horizontally(col);
     }
 
+    fn start_selection(&mut self) {
+        self.selection = Some(Selection::new(self.text_location, self.text_location));
+        self.mark_redraw(true);
+    }
+
+    fn extend_selection(&mut self) {
+        if let Some(selection) = &mut self.selection {
+            selection.end = self.text_location;
+            self.mark_redraw(true);
+        } else {
+            self.start_selection();
+        }
+    }
+
+    fn clear_selection(&mut self) {
+        if self.selection.is_some() {
+            self.selection = None;
+            self.mark_redraw(true);
+        }
+    }
+
     pub fn handle_edit_command(&mut self, command: Edit) {
         match command {
             Edit::Insert(character) => self.insert_char(character),
