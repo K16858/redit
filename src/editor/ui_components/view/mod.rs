@@ -239,16 +239,7 @@ impl View {
             .text_location_to_position()
             .saturating_sub(self.scroll_offset);
 
-        if let Some(_line) = self.buffer.lines.get(self.text_location.line_idx) {
-            let left = self.scroll_offset.col;
-            let left_truncated_width = left;
-            Position {
-                row,
-                col: col.saturating_sub(left_truncated_width),
-            }
-        } else {
-            Position { row, col }
-        }
+        Position { row, col }
     }
 
     fn text_location_to_position(&self) -> Position {

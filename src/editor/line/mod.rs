@@ -217,7 +217,7 @@ impl Line {
                 return fragment.start;
             }
             current_width += fragment_width;
-            if current_width >= display_width {
+            if current_width == display_width {
                 return fragment.start.saturating_add(fragment.grapheme.len());
             }
         }
