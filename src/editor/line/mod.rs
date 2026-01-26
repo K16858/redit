@@ -256,6 +256,14 @@ impl Line {
             .map_or(0, |fragment| fragment.start)
     }
 
+    pub fn grapheme_to_byte_idx(&self, grapheme_idx: usize) -> usize {
+        self.grapheme_idx_to_byte_idx(grapheme_idx)
+    }
+
+    pub fn line_length(&self) -> usize {
+        self.string.len()
+    }
+
     pub fn search_forward(&self, query: &str, from_grapheme_idx: usize) -> Option<usize> {
         debug_assert!(from_grapheme_idx <= self.grapheme_count());
         if from_grapheme_idx == self.grapheme_count() {
