@@ -18,6 +18,8 @@ mod location;
 use location::Location;
 mod search_direction;
 use search_direction::SearchDirection;
+mod selection;
+use selection::Selection;
 
 type HighlightCache = HashMap<usize, (Vec<HighlightAnnotation>, HighlightState, u64)>;
 
@@ -32,6 +34,7 @@ pub struct View {
     highlighter_registry: HighlighterRegistry,
     highlight_cache: HighlightCache,
     cache_version: u64,
+    selection: Option<Selection>,
 }
 
 impl View {
