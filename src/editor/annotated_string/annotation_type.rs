@@ -12,4 +12,5 @@ pub enum AnnotationType {
     Bracket1,
     Bracket2,
     Bracket3,
+    Selection,
 }

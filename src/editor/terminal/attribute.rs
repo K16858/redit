@@ -16,6 +16,8 @@ pub struct ColorScheme {
     pub string: Color,
     pub comment: Color,
     pub brackets: [Color; 4],
+    pub selection_fg: Color,
+    pub selection_bg: Color,
 }
 
 pub const DEFAULT_COLOR_SCHEME: ColorScheme = ColorScheme {
@@ -91,6 +93,12 @@ pub const DEFAULT_COLOR_SCHEME: ColorScheme = ColorScheme {
             b: 121,
         },
     ],
+    selection_fg: Color::Rgb { r: 0, g: 0, b: 0 },
+    selection_bg: Color::Rgb {
+        r: 200,
+        g: 200,
+        b: 200,
+    },
 };
 
 static COLOR_SCHEME: std::sync::LazyLock<Mutex<ColorScheme>> = std::sync::LazyLock::new(|| {
@@ -109,9 +117,10 @@ fn default_color_scheme() -> ColorScheme {
         use std::path::Path;
         if let Ok(config_file) =
             load_colors_config(Some(Path::new("docs/examples/default/colors.toml")))
-            && let Some(colors_config) = config_file.colors {
-                return merge_color_scheme(&DEFAULT_COLOR_SCHEME, Some(&colors_config));
-            }
+            && let Some(colors_config) = config_file.colors
+        {
+            return merge_color_scheme(&DEFAULT_COLOR_SCHEME, Some(&colors_config));
+        }
     }
 
     // Release build or fallback: use hardcoded values
@@ -175,6 +184,10 @@ impl From<AnnotationType> for Attribute {
                 foreground: Some(scheme.brackets[3]),
                 background: None,
             },
+            AnnotationType::Selection => Self {
+                foreground: Some(scheme.selection_fg),
+                background: Some(scheme.selection_bg),
+            },
         }
     }
 }
@@ -204,6 +217,8 @@ pub fn merge_color_scheme(
             string: default.string,
             comment: default.comment,
             brackets: default.brackets,
+            selection_fg: default.selection_fg,
+            selection_bg: default.selection_bg,
         };
     };
 
@@ -249,5 +264,7 @@ pub fn merge_color_scheme(
             .as_ref()
             .map_or(default.comment, color_rgb_to_color),
         brackets,
+        selection_fg: default.selection_fg,
+        selection_bg: default.selection_bg,
     }
 }
