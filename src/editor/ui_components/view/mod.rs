@@ -404,6 +404,37 @@ impl View {
         }
     }
 
+    fn delete_selection(&mut self) -> bool {
+        let Some(selection) = self.selection else {
+            return false;
+        };
+
+        let normalized = selection.normalize();
+        if normalized.is_empty() {
+            return false;
+        }
+
+        let mut ranges = normalized.get_ranges(&self.buffer);
+        if ranges.is_empty() {
+            return false;
+        }
+
+        ranges.sort_by(|(a_idx, _), (b_idx, _)| b_idx.cmp(a_idx));
+
+        for (line_idx, byte_range) in ranges {
+            if let Some(line) = self.buffer.lines.get_mut(line_idx) {
+                line.delete_byte_range(byte_range);
+            }
+        }
+
+        self.text_location = normalized.start;
+        self.selection = None;
+        self.cache_version += 1;
+        self.mark_redraw(true);
+
+        true
+    }
+
     pub fn handle_edit_command(&mut self, command: Edit) {
         match command {
             Edit::Insert(character) => self.insert_char(character),

@@ -272,6 +272,22 @@ impl Line {
         }
     }
 
+    pub fn delete_byte_range(&mut self, range: Range<usize>) {
+        if range.is_empty() {
+            return;
+        }
+
+        let start = min(range.start, self.string.len());
+        let end = min(range.end, self.string.len());
+
+        if start >= end {
+            return;
+        }
+
+        self.string.drain(start..end);
+        self.rebuild_fragments();
+    }
+
     pub fn append(&mut self, other: &Self) {
         self.string.push_str(&other.string);
         self.rebuild_fragments();
