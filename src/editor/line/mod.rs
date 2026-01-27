@@ -47,7 +47,14 @@ impl Line {
                             };
                             (None, rendered_width)
                         },
-                        |replacement| (Some(replacement), GraphemeWidth::Half),
+                        |replacement| {
+                            let rendered_width = if grapheme.width_cjk() > 1 {
+                                GraphemeWidth::Full
+                            } else {
+                                GraphemeWidth::Half
+                            };
+                            (Some(replacement), rendered_width)
+                        },
                     );
 
                 TextFragment {
@@ -286,7 +293,7 @@ impl Line {
         }
         self.fragments
             .iter()
-            .position(|fragment| fragment.start >= byte_idx)
+            .position(|f| byte_idx >= f.start && byte_idx < f.start + f.grapheme.len())
     }
 
     fn grapheme_idx_to_byte_idx(&self, grapheme_idx: usize) -> usize {
