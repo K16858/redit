@@ -38,7 +38,9 @@ impl Line {
                 let (replacement, rendered_width) = Self::get_replacement_character(grapheme)
                     .map_or_else(
                         || {
-                            let unicode_width = grapheme.width();
+                            // Note: width_cjk is used to get the width of the string in CJK characters.
+                            // This is because of Ambiguous Width problem.
+                            let unicode_width = grapheme.width_cjk();
                             let rendered_width = match unicode_width {
                                 0 | 1 => GraphemeWidth::Half,
                                 _ => GraphemeWidth::Full,
@@ -63,7 +65,9 @@ impl Line {
     }
 
     fn get_replacement_character(for_str: &str) -> Option<char> {
-        let width = for_str.width();
+        // Note: width_cjk is used to get the width of the string in CJK characters.
+        // This is because of Ambiguous Width problem.
+        let width = for_str.width_cjk();
         match for_str {
             " " => None,
             "\t" => Some(' '),
