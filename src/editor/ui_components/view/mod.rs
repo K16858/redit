@@ -445,6 +445,8 @@ impl View {
     }
 
     fn insert_char(&mut self, character: char) {
+        let _ = self.delete_selection();
+
         let old_len = self
             .buffer
             .lines
@@ -466,6 +468,8 @@ impl View {
     }
 
     fn insert_newline(&mut self) {
+        let _ = self.delete_selection();
+
         self.buffer.insert_newline(self.text_location);
         self.handle_move_command(Move::right(false));
         self.cache_version += 1;
@@ -482,6 +486,10 @@ impl View {
     }
 
     fn backspace(&mut self) {
+        if self.delete_selection() {
+            return;
+        }
+
         if self.text_location.line_idx != 0 || self.text_location.grapheme_idx != 0 {
             self.handle_move_command(Move::left(false));
             self.delete();
@@ -489,6 +497,10 @@ impl View {
     }
 
     fn delete(&mut self) {
+        if self.delete_selection() {
+            return;
+        }
+
         self.buffer.delete(self.text_location);
         self.cache_version += 1;
         self.mark_redraw(true);
