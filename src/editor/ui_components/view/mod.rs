@@ -114,6 +114,10 @@ impl View {
             let draw_row = origin_y + screen_row;
 
             if let Some(line) = self.buffer.lines.get(line_idx) {
+                let selection_range = self.selection.and_then(|sel| {
+                    Self::selection_byte_range_for_line(sel, line, line_idx)
+                });
+
                 let left = self.scroll_offset.col;
                 let right = left + width;
                 let query = self
@@ -122,13 +126,6 @@ impl View {
                     .and_then(|search_info| search_info.query.as_deref());
                 let selected_match = (self.text_location.line_idx == line_idx && query.is_some())
                     .then_some(self.text_location.grapheme_idx);
-
-                let selection_range = self.selection.and_then(|sel| {
-                    sel.get_ranges(&self.buffer)
-                        .iter()
-                        .find(|(idx, _)| *idx == line_idx)
-                        .map(|(_, range)| range.clone())
-                });
 
                 if let Some((cached_annotations, cached_state, cached_version)) =
                     self.highlight_cache.get(&line_idx)
@@ -401,6 +398,38 @@ impl View {
         if self.selection.is_some() {
             self.selection = None;
             self.mark_redraw(true);
+        }
+    }
+
+    /// Returns the byte range of the selection on the given line, using that exact line
+    /// for grapheme→byte conversion. Must be called with the same `line` reference
+    /// that is later passed to `get_annotated_visible_substr`, so that coordinates match.
+    fn selection_byte_range_for_line(
+        sel: Selection,
+        line: &Line,
+        line_idx: usize,
+    ) -> Option<std::ops::Range<usize>> {
+        let n = sel.normalize();
+        if n.is_empty() {
+            return None;
+        }
+        if line_idx < n.start.line_idx || line_idx > n.end.line_idx {
+            return None;
+        }
+        let start_byte = if line_idx == n.start.line_idx {
+            line.grapheme_to_byte_idx(n.start.grapheme_idx)
+        } else {
+            0
+        };
+        let end_byte = if line_idx == n.end.line_idx {
+            line.grapheme_to_byte_idx(n.end.grapheme_idx)
+        } else {
+            line.line_length()
+        };
+        if start_byte < end_byte {
+            Some(start_byte..end_byte)
+        } else {
+            None
         }
     }
 

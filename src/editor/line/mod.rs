@@ -163,10 +163,17 @@ impl Line {
                 });
         }
 
+        if let Some(sel_range) = selection_range {
+            let end = min(sel_range.end, self.string.len());
+            if sel_range.start < end {
+                result.add_annotation(AnnotationType::Selection, sel_range.start, end);
+            }
+        }
+
         let byte_start = self.display_width_to_byte_pos(range.start);
         let byte_end = self.display_width_to_byte_pos(range.end);
 
-        let left_truncated_bytes = if byte_start > 0 {
+        let _left_truncated_bytes = if byte_start > 0 {
             result.truncate_left_until(byte_start);
             byte_start
         } else {
@@ -190,19 +197,6 @@ impl Line {
                 if start < result_len && end <= result_len {
                     result.replace(start, end, &replacement.to_string());
                 }
-            }
-        }
-
-        if let Some(sel_range) = selection_range {
-            let adjusted_start = sel_range.start.saturating_sub(left_truncated_bytes);
-            let adjusted_end = sel_range.end.saturating_sub(left_truncated_bytes);
-            let result_len = result.to_string().len();
-
-            if adjusted_start < adjusted_end
-                && adjusted_start < result_len
-                && adjusted_end <= result_len
-            {
-                result.add_annotation(AnnotationType::Selection, adjusted_start, adjusted_end);
             }
         }
 
@@ -406,5 +400,33 @@ impl Deref for Line {
 
     fn deref(&self) -> &Self::Target {
         &self.string
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::editor::highlight::HighlightState;
+
+    #[test]
+    fn selection_annotation_applied_for_mid_line_range() {
+        let line = Line::from("abcdef");
+        let (ann, _) = line.get_annotated_visible_substr(
+            0..80,
+            None,
+            None,
+            None,
+            HighlightState::default(),
+            None,
+            Some(2..3),
+        );
+        let mut found_selection = false;
+        for part in &ann {
+            if part.annotation_type == Some(AnnotationType::Selection) {
+                found_selection = true;
+                assert_eq!(part.string, "c");
+            }
+        }
+        assert!(found_selection, "Selection annotation should cover 'c'");
     }
 }

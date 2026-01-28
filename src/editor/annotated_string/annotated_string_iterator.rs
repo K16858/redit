@@ -1,4 +1,4 @@
-use super::{AnnotatedString, AnnotatedStringPart};
+use super::{AnnotatedString, AnnotatedStringPart, AnnotationType};
 use std::cmp::min;
 
 pub struct AnnotatedStringIterator<'a> {
@@ -13,15 +13,18 @@ impl<'a> Iterator for AnnotatedStringIterator<'a> {
             return None;
         }
 
-        if let Some(annotation) = self
+        let covering: Vec<_> = self
             .annotated_string
             .annotations
             .iter()
-            .filter(|annotation| {
-                annotation.start <= self.current_idx && annotation.end > self.current_idx
-            })
-            .next_back()
-        {
+            .filter(|a| a.start <= self.current_idx && a.end > self.current_idx)
+            .collect();
+        let annotation = covering
+            .iter()
+            .find(|a| a.kind == AnnotationType::Selection)
+            .map(|a| *a)
+            .or_else(|| covering.last().map(|v| *v));
+        if let Some(annotation) = annotation {
             let end_idx = min(annotation.end, self.annotated_string.string.len());
             let start_idx = self.current_idx;
             self.current_idx = end_idx;
