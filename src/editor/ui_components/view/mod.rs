@@ -499,6 +499,39 @@ impl View {
         }
     }
 
+    /// Inserts the given text at the current cursor (or replaces selection).
+    /// Used by both Ctrl+V paste and bracketed paste (Event::Paste).
+    pub fn paste_text(&mut self, text: &str) {
+        if text.is_empty() {
+            return;
+        }
+
+        let text = text.replace("\r\n", "\n").replace('\r', "\n");
+
+        let _ = self.delete_selection();
+
+        for (idx, line) in text.split('\n').enumerate() {
+            if idx > 0 {
+                self.insert_newline();
+            }
+            for ch in line.chars() {
+                self.insert_char(ch);
+            }
+        }
+    }
+
+    fn paste_clipboard(&mut self) {
+        let Ok(mut clipboard) = Clipboard::new() else {
+            return;
+        };
+
+        let Ok(text) = clipboard.get_text() else {
+            return;
+        };
+
+        self.paste_text(&text);
+    }
+
     pub fn handle_edit_command(&mut self, command: Edit) {
         match command {
             Edit::Insert(character) => self.insert_char(character),
@@ -506,7 +539,8 @@ impl View {
             Edit::Backspace => self.backspace(),
             Edit::Delete => self.delete(),
             Edit::Copy => self.copy_selection(),
-            Edit::Cut | Edit::Paste => {}
+            Edit::Paste => self.paste_clipboard(),
+            Edit::Cut => {}
         }
     }
 

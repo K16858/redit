@@ -108,6 +108,17 @@ impl Editor {
     // Event
     // =========================================
     fn evaluate_event(&mut self, event: Event) {
+        if let Event::Paste(data) = event {
+            if self.prompt_type.is_none() {
+                self.view.paste_text(&data);
+            } else {
+                for ch in data.chars() {
+                    self.command_bar.handle_edit_command(command::Edit::Insert(ch));
+                }
+            }
+            return;
+        }
+
         let should_process = match &event {
             Event::Key(KeyEvent { kind, .. }) => kind == &KeyEventKind::Press,
             Event::Resize(_, _) => true,

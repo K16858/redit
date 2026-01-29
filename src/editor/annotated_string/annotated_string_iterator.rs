@@ -13,6 +13,12 @@ impl<'a> Iterator for AnnotatedStringIterator<'a> {
             return None;
         }
 
+        let s = &self.annotated_string.string;
+        // Ensure we never slice from the middle of a UTF-8 character.
+        while self.current_idx > 0 && !s.is_char_boundary(self.current_idx) {
+            self.current_idx -= 1;
+        }
+
         let covering: Vec<_> = self
             .annotated_string
             .annotations
@@ -35,6 +41,16 @@ impl<'a> Iterator for AnnotatedStringIterator<'a> {
                     end_idx = a.start;
                 }
             }
+            // Ensure we always slice on char boundaries to avoid UTF-8 panics.
+            let s = &self.annotated_string.string;
+            while end_idx > start_idx && !s.is_char_boundary(end_idx) {
+                end_idx -= 1;
+            }
+            if end_idx <= start_idx {
+                // Fallback: advance by one byte and try again.
+                self.current_idx = start_idx + 1;
+                return self.next();
+            }
             self.current_idx = end_idx;
             return Some(AnnotatedStringPart {
                 string: &self.annotated_string.string[start_idx..end_idx],
@@ -48,6 +64,14 @@ impl<'a> Iterator for AnnotatedStringIterator<'a> {
             }
         }
         let start_idx = self.current_idx;
+        let s = &self.annotated_string.string;
+        while end_idx > start_idx && !s.is_char_boundary(end_idx) {
+            end_idx -= 1;
+        }
+        if end_idx <= start_idx {
+            self.current_idx = start_idx + 1;
+            return self.next();
+        }
         self.current_idx = end_idx;
 
         Some(AnnotatedStringPart {
