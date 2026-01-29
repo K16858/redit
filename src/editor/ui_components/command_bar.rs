@@ -17,6 +17,7 @@ impl CommandBar {
             Edit::Insert(character) => self.value.append_char(character),
             Edit::Delete | Edit::InsertNewline => {}
             Edit::Backspace => self.value.delete_last(),
+            Edit::Copy | Edit::Cut | Edit::Paste => {}
         }
         self.mark_redraw(true);
     }

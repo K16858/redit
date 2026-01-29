@@ -470,6 +470,7 @@ impl View {
             Edit::InsertNewline => self.insert_newline(),
             Edit::Backspace => self.backspace(),
             Edit::Delete => self.delete(),
+            Edit::Copy | Edit::Cut | Edit::Paste => {}
         }
     }
 
