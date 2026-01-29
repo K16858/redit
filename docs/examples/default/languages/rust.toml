@@ -9,6 +9,10 @@ keywords = [
     "for",
     "while",
     "match",
+    "struct", "enum", "impl", "trait", "use", "pub", "const", "static",
+    "return", "break", "continue", "loop", "async", "await", "move",
+    "ref", "mod", "crate", "super", "self", "Self", "where", "type",
+    "unsafe", "extern", "as", "in", "dyn", "true", "false"
 ]
 
 primitive_types = [

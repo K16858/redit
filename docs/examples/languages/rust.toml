@@ -15,11 +15,10 @@ keywords = [
     "for",
     "while",
     "match",
-    # Add more keywords as needed:
-    # "struct", "enum", "impl", "trait", "use", "pub", "const", "static",
-    # "return", "break", "continue", "loop", "async", "await", "move",
-    # "ref", "mod", "crate", "super", "self", "Self", "where", "type",
-    # "unsafe", "extern", "as", "in", "dyn", "true", "false"
+    "struct", "enum", "impl", "trait", "use", "pub", "const", "static",
+    "return", "break", "continue", "loop", "async", "await", "move",
+    "ref", "mod", "crate", "super", "self", "Self", "where", "type",
+    "unsafe", "extern", "as", "in", "dyn", "true", "false"
 ]
 
 # Primitive types to highlight
