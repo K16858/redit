@@ -26,6 +26,7 @@ type HighlightCache = HashMap<usize, (Vec<HighlightAnnotation>, HighlightState, 
 #[derive(Default)]
 pub struct View {
     buffer: Buffer,
+    clipboard: Option<String>,
     needs_redraw: bool,
     size: Size,
     text_location: Location,
@@ -464,13 +465,44 @@ impl View {
         true
     }
 
+    fn selection_to_string(&self, selection: &Selection) -> Option<String> {
+        let ranges = selection.get_ranges(&self.buffer);
+        if ranges.is_empty() {
+            return None;
+        }
+
+        let mut result = String::new();
+        for (idx, (line_idx, byte_range)) in ranges.iter().enumerate() {
+            if let Some(line) = self.buffer.lines.get(*line_idx) {
+                let slice = &line[byte_range.clone()];
+                result.push_str(slice);
+                if idx + 1 < ranges.len() {
+                    result.push('\n');
+                }
+            }
+        }
+
+        Some(result)
+    }
+
+    fn copy_selection(&mut self) {
+        let Some(selection) = self.selection else {
+            return;
+        };
+
+        if let Some(text) = self.selection_to_string(&selection) {
+            self.clipboard = Some(text);
+        }
+    }
+
     pub fn handle_edit_command(&mut self, command: Edit) {
         match command {
             Edit::Insert(character) => self.insert_char(character),
             Edit::InsertNewline => self.insert_newline(),
             Edit::Backspace => self.backspace(),
             Edit::Delete => self.delete(),
-            Edit::Copy | Edit::Cut | Edit::Paste => {}
+            Edit::Copy => self.copy_selection(),
+            Edit::Cut | Edit::Paste => {}
         }
     }
 
