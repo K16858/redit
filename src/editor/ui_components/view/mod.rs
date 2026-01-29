@@ -499,6 +499,11 @@ impl View {
         }
     }
 
+    fn cut_selection(&mut self) {
+        self.copy_selection();
+        let _ = self.delete_selection();
+    }
+
     /// Inserts the given text at the current cursor (or replaces selection).
     /// Used by both Ctrl+V paste and bracketed paste (Event::Paste).
     pub fn paste_text(&mut self, text: &str) {
@@ -539,8 +544,8 @@ impl View {
             Edit::Backspace => self.backspace(),
             Edit::Delete => self.delete(),
             Edit::Copy => self.copy_selection(),
+            Edit::Cut => self.cut_selection(),
             Edit::Paste => self.paste_clipboard(),
-            Edit::Cut => {}
         }
     }
 
