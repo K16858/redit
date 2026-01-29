@@ -7,6 +7,7 @@ use super::super::{
 use super::UIComponent;
 use std::cmp::min;
 use std::collections::HashMap;
+use arboard::Clipboard;
 mod buffer;
 use buffer::Buffer;
 use std::io::Error;
@@ -26,7 +27,6 @@ type HighlightCache = HashMap<usize, (Vec<HighlightAnnotation>, HighlightState, 
 #[derive(Default)]
 pub struct View {
     buffer: Buffer,
-    clipboard: Option<String>,
     needs_redraw: bool,
     size: Size,
     text_location: Location,
@@ -490,8 +490,12 @@ impl View {
             return;
         };
 
-        if let Some(text) = self.selection_to_string(&selection) {
-            self.clipboard = Some(text);
+        let Some(text) = self.selection_to_string(&selection) else {
+            return;
+        };
+
+        if let Ok(mut clipboard) = Clipboard::new() {
+            let _ = clipboard.set_text(text);
         }
     }
 
