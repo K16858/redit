@@ -79,7 +79,8 @@ fn find_number_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
                     }
                 }
                 if j > i + 2 {
-                    ranges.push(start..chars[j].0);
+                    let end_byte = if j < chars.len() { chars[j].0 } else { string.len() };
+                    ranges.push(start..end_byte);
                 }
                 i = j;
                 continue;
@@ -95,7 +96,8 @@ fn find_number_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
                     }
                 }
                 if j > i + 2 {
-                    ranges.push(start..chars[j].0);
+                    let end_byte = if j < chars.len() { chars[j].0 } else { string.len() };
+                    ranges.push(start..end_byte);
                 }
                 i = j;
                 continue;
@@ -111,7 +113,8 @@ fn find_number_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
                     }
                 }
                 if j > i + 2 {
-                    ranges.push(start..chars[j].0);
+                    let end_byte = if j < chars.len() { chars[j].0 } else { string.len() };
+                    ranges.push(start..end_byte);
                 }
                 i = j;
                 continue;
@@ -138,7 +141,8 @@ fn find_number_ranges(string: &str) -> Vec<std::ops::Range<usize>> {
                     break;
                 }
             }
-            ranges.push(start..chars[j].0);
+            let end_byte = if j < chars.len() { chars[j].0 } else { string.len() };
+            ranges.push(start..end_byte);
             i = j;
         } else {
             i += 1;
