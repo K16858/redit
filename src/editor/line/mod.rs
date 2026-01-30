@@ -12,7 +12,9 @@ use text_fragment::TextFragment;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
+use super::highlight::{HighlightAnnotation, Highlighter};
 use super::{AnnotatedString, AnnotationType};
+use crate::editor::highlight::HighlightState;
 
 #[derive(Default, Clone)]
 pub struct Line {
@@ -36,14 +38,23 @@ impl Line {
                 let (replacement, rendered_width) = Self::get_replacement_character(grapheme)
                     .map_or_else(
                         || {
-                            let unicode_width = grapheme.width();
+                            // Note: width_cjk is used to get the width of the string in CJK.
+                            // This is because of Ambiguous Width problem.
+                            let unicode_width = grapheme.width_cjk();
                             let rendered_width = match unicode_width {
                                 0 | 1 => GraphemeWidth::Half,
                                 _ => GraphemeWidth::Full,
                             };
                             (None, rendered_width)
                         },
-                        |replacement| (Some(replacement), GraphemeWidth::Half),
+                        |replacement| {
+                            let rendered_width = if grapheme.width_cjk() > 1 {
+                                GraphemeWidth::Full
+                            } else {
+                                GraphemeWidth::Half
+                            };
+                            (Some(replacement), rendered_width)
+                        },
                     );
 
                 TextFragment {
@@ -61,7 +72,9 @@ impl Line {
     }
 
     fn get_replacement_character(for_str: &str) -> Option<char> {
-        let width = for_str.width();
+        // Note: width_cjk is used to get the width of the string in CJK.
+        // This is because of Ambiguous Width problem.
+        let width = for_str.width_cjk();
         match for_str {
             " " => None,
             "\t" => Some(' '),
@@ -81,8 +94,17 @@ impl Line {
     }
 
     pub fn get_visible_graphemes(&self, range: Range<usize>) -> String {
-        self.get_annotated_visible_substr(range, None, None)
-            .to_string()
+        self.get_annotated_visible_substr(
+            range,
+            None,
+            None,
+            None,
+            HighlightState::default(),
+            None,
+            None,
+        )
+        .0
+        .to_string()
     }
 
     pub fn grapheme_count(&self) -> usize {
@@ -94,11 +116,28 @@ impl Line {
         range: Range<usize>,
         query: Option<&str>,
         selected_match: Option<usize>,
-    ) -> AnnotatedString {
+        highlighter: Option<&dyn Highlighter>,
+        state: HighlightState,
+        cached_annotations: Option<&[HighlightAnnotation]>,
+        selection_range: Option<Range<usize>>,
+    ) -> (AnnotatedString, HighlightState) {
         if range.start >= range.end {
-            return AnnotatedString::default();
+            return (AnnotatedString::default(), state);
         }
+
         let mut result = AnnotatedString::from(&self.string);
+        let mut new_state = state;
+        if let Some(cached) = cached_annotations {
+            for highlight in cached {
+                result.add_annotation(highlight.annotation_type, highlight.start, highlight.end);
+            }
+        } else if let Some(hl) = highlighter {
+            let (highlights, updated_state) = hl.highlight_line(&self.string, 0, state);
+            new_state = updated_state;
+            for highlight in highlights {
+                result.add_annotation(highlight.annotation_type, highlight.start, highlight.end);
+            }
+        }
 
         if let Some(query) = query
             && !query.is_empty()
@@ -124,45 +163,44 @@ impl Line {
                 });
         }
 
-        let mut fragment_start = self.width();
-        for fragment in self.fragments.iter().rev() {
-            let fragment_end = fragment_start;
-            fragment_start = fragment_start.saturating_sub(fragment.rendered_width.into());
-
-            if fragment_start > range.end {
-                continue;
-            }
-
-            if fragment_start < range.end && fragment_end > range.end {
-                result.replace(fragment.start, self.string.len(), "⋯");
-                continue;
-            } else if fragment_start == range.end {
-                result.truncate_right_from(fragment.start);
-                continue;
-            }
-
-            if fragment_end <= range.start {
-                result.truncate_left_until(fragment.start.saturating_add(fragment.grapheme.len()));
-                break;
-            } else if fragment_start < range.start && fragment_end > range.start {
-                result.replace(
-                    0,
-                    fragment.start.saturating_add(fragment.grapheme.len()),
-                    "⋯",
-                );
-                break;
-            }
-
-            if fragment_start >= range.start
-                && fragment_end <= range.end
-                && let Some(replacement) = fragment.replacement
-            {
-                let start = fragment.start;
-                let end = start.saturating_add(fragment.grapheme.len());
-                result.replace(start, end, &replacement.to_string());
+        if let Some(sel_range) = selection_range {
+            let end = min(sel_range.end, self.string.len());
+            if sel_range.start < end {
+                result.add_annotation(AnnotationType::Selection, sel_range.start, end);
             }
         }
-        result
+
+        let byte_start = self.display_width_to_byte_pos(range.start);
+        let byte_end = self.display_width_to_byte_pos(range.end);
+
+        let _left_truncated_bytes = if byte_start > 0 {
+            result.truncate_left_until(byte_start);
+            byte_start
+        } else {
+            0
+        };
+        if byte_end < self.string.len() {
+            result.truncate_right_from(byte_end);
+        }
+
+        for fragment in &self.fragments {
+            if fragment.start >= byte_end
+                || fragment.start.saturating_add(fragment.grapheme.len()) <= byte_start
+            {
+                continue;
+            }
+
+            if let Some(replacement) = fragment.replacement {
+                let start = fragment.start.saturating_sub(byte_start);
+                let end = start.saturating_add(fragment.grapheme.len());
+                let result_len = result.to_string().len();
+                if start < result_len && end <= result_len {
+                    result.replace(start, end, &replacement.to_string());
+                }
+            }
+        }
+
+        (result, new_state)
     }
 
     pub fn width_until(&self, grapheme_idx: usize) -> usize {
@@ -174,6 +212,27 @@ impl Line {
                 GraphemeWidth::Full => 2,
             })
             .sum()
+    }
+
+    pub fn display_width_to_byte_pos(&self, display_width: usize) -> usize {
+        let mut current_width = 0;
+        for fragment in &self.fragments {
+            let fragment_width: usize = fragment.rendered_width.into();
+            // Note:
+            // If the display_width falls within this fragment (including partial full-width characters),
+            // return the fragment's start byte position.
+            if current_width + fragment_width > display_width {
+                return fragment.start;
+            }
+            current_width += fragment_width;
+            // Note:
+            // If the display_width exactly matches the end of this fragment,
+            // return the byte position after this fragment (start of next fragment).
+            if current_width == display_width {
+                return fragment.start.saturating_add(fragment.grapheme.len());
+            }
+        }
+        self.string.len()
     }
 
     pub fn insert_char(&mut self, character: char, at: usize) {
@@ -207,6 +266,22 @@ impl Line {
         }
     }
 
+    pub fn delete_byte_range(&mut self, range: Range<usize>) {
+        if range.is_empty() {
+            return;
+        }
+
+        let start = min(range.start, self.string.len());
+        let end = min(range.end, self.string.len());
+
+        if start >= end {
+            return;
+        }
+
+        self.string.drain(start..end);
+        self.rebuild_fragments();
+    }
+
     pub fn append(&mut self, other: &Self) {
         self.string.push_str(&other.string);
         self.rebuild_fragments();
@@ -222,19 +297,31 @@ impl Line {
         }
     }
 
-    fn byte_idx_to_grapheme_idx(&self, byte_idx: usize) -> Option<usize> {
+    pub fn byte_idx_to_grapheme_idx(&self, byte_idx: usize) -> Option<usize> {
         if byte_idx > self.string.len() {
             return None;
         }
         self.fragments
             .iter()
-            .position(|fragment| fragment.start >= byte_idx)
+            .position(|f| byte_idx >= f.start && byte_idx < f.start + f.grapheme.len())
     }
 
     fn grapheme_idx_to_byte_idx(&self, grapheme_idx: usize) -> usize {
         self.fragments
             .get(grapheme_idx)
             .map_or(0, |fragment| fragment.start)
+    }
+
+    pub fn grapheme_to_byte_idx(&self, grapheme_idx: usize) -> usize {
+        if grapheme_idx >= self.grapheme_count() {
+            self.string.len()
+        } else {
+            self.grapheme_idx_to_byte_idx(grapheme_idx)
+        }
+    }
+
+    pub fn line_length(&self) -> usize {
+        self.string.len()
     }
 
     pub fn search_forward(&self, query: &str, from_grapheme_idx: usize) -> Option<usize> {
@@ -313,5 +400,33 @@ impl Deref for Line {
 
     fn deref(&self) -> &Self::Target {
         &self.string
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::editor::highlight::HighlightState;
+
+    #[test]
+    fn selection_annotation_applied_for_mid_line_range() {
+        let line = Line::from("abcdef");
+        let (ann, _) = line.get_annotated_visible_substr(
+            0..80,
+            None,
+            None,
+            None,
+            HighlightState::default(),
+            None,
+            Some(2..3),
+        );
+        let mut found_selection = false;
+        for part in &ann {
+            if part.annotation_type == Some(AnnotationType::Selection) {
+                found_selection = true;
+                assert_eq!(part.string, "c");
+            }
+        }
+        assert!(found_selection, "Selection annotation should cover 'c'");
     }
 }

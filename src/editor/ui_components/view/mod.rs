@@ -1,10 +1,13 @@
 use super::super::{
     DocumentStatus, Line, NAME, Position, Size, VERSION,
-    command::{Edit, Move},
+    command::{Edit, Move, MoveDirection},
+    highlight::{HighlightAnnotation, HighlightState, HighlighterRegistry},
     terminal::Terminal,
 };
 use super::UIComponent;
+use arboard::Clipboard;
 use std::cmp::min;
+use std::collections::HashMap;
 mod buffer;
 use buffer::Buffer;
 use std::io::Error;
@@ -16,6 +19,10 @@ mod location;
 use location::Location;
 mod search_direction;
 use search_direction::SearchDirection;
+mod selection;
+use selection::Selection;
+
+type HighlightCache = HashMap<usize, (Vec<HighlightAnnotation>, HighlightState, u64)>;
 
 #[derive(Default)]
 pub struct View {
@@ -25,15 +32,29 @@ pub struct View {
     text_location: Location,
     scroll_offset: Position,
     search_info: Option<SearchInfo>,
+    highlighter_registry: HighlighterRegistry,
+    highlight_cache: HighlightCache,
+    cache_version: u64,
+    selection: Option<Selection>,
 }
 
 impl View {
     pub fn get_status(&self) -> DocumentStatus {
+        let language_name = self
+            .buffer
+            .file_info
+            .get_path()
+            .and_then(|p| p.extension())
+            .and_then(|ext| ext.to_str())
+            .and_then(|ext| self.highlighter_registry.get_highlighter(Some(ext)))
+            .map(|h| h.language_name().to_string());
+
         DocumentStatus {
             total_lines: self.buffer.height(),
             current_line_idx: self.text_location.line_idx,
             file_name: format!("{}", self.buffer.file_info),
             is_modified: self.buffer.modified,
+            language_name,
         }
     }
 
@@ -52,15 +73,52 @@ impl View {
         Ok(())
     }
 
-    fn render_buffer(&self, origin_y: usize) -> Result<(), Error> {
+    fn render_buffer(&mut self, origin_y: usize) -> Result<(), Error> {
         let Size { height, width } = self.size;
         let top = self.scroll_offset.row;
+
+        let highlighter = self
+            .buffer
+            .file_info
+            .get_path()
+            .and_then(|p| p.extension())
+            .and_then(|ext| ext.to_str())
+            .and_then(|ext| self.highlighter_registry.get_highlighter(Some(ext)));
+
+        let mut state = HighlightState::default();
+        if let Some(hl) = highlighter {
+            for line_idx in 0..top {
+                if let Some(line) = self.buffer.lines.get(line_idx) {
+                    if let Some((_, cached_state, cached_version)) =
+                        self.highlight_cache.get(&line_idx)
+                    {
+                        if *cached_version == self.cache_version {
+                            state = *cached_state;
+                        } else {
+                            let (annotations, new_state) = hl.highlight_line(line, line_idx, state);
+                            self.highlight_cache
+                                .insert(line_idx, (annotations, new_state, self.cache_version));
+                            state = new_state;
+                        }
+                    } else {
+                        let (annotations, new_state) = hl.highlight_line(line, line_idx, state);
+                        self.highlight_cache
+                            .insert(line_idx, (annotations, new_state, self.cache_version));
+                        state = new_state;
+                    }
+                }
+            }
+        }
 
         for screen_row in 0..height {
             let line_idx = top + screen_row;
             let draw_row = origin_y + screen_row;
 
             if let Some(line) = self.buffer.lines.get(line_idx) {
+                let selection_range = self
+                    .selection
+                    .and_then(|sel| Self::selection_byte_range_for_line(sel, line, line_idx));
+
                 let left = self.scroll_offset.col;
                 let right = left + width;
                 let query = self
@@ -69,12 +127,85 @@ impl View {
                     .and_then(|search_info| search_info.query.as_deref());
                 let selected_match = (self.text_location.line_idx == line_idx && query.is_some())
                     .then_some(self.text_location.grapheme_idx);
-                Terminal::print_annotated_row(
-                    screen_row,
-                    &line.get_annotated_visible_substr(left..right, query, selected_match),
-                )?;
+
+                if let Some((cached_annotations, cached_state, cached_version)) =
+                    self.highlight_cache.get(&line_idx)
+                {
+                    if *cached_version == self.cache_version {
+                        let (annotated_string, new_state) = line.get_annotated_visible_substr(
+                            left..right,
+                            query,
+                            selected_match,
+                            highlighter,
+                            *cached_state,
+                            Some(cached_annotations),
+                            selection_range,
+                        );
+                        state = new_state;
+                        Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                    } else if let Some(hl) = highlighter {
+                        let (annotations, new_state) = hl.highlight_line(line, line_idx, state);
+                        self.highlight_cache.insert(
+                            line_idx,
+                            (annotations.clone(), new_state, self.cache_version),
+                        );
+                        let (annotated_string, final_state) = line.get_annotated_visible_substr(
+                            left..right,
+                            query,
+                            selected_match,
+                            highlighter,
+                            new_state,
+                            Some(&annotations),
+                            selection_range,
+                        );
+                        state = final_state;
+                        Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                    } else {
+                        let (annotated_string, new_state) = line.get_annotated_visible_substr(
+                            left..right,
+                            query,
+                            selected_match,
+                            None,
+                            state,
+                            None,
+                            selection_range,
+                        );
+                        state = new_state;
+                        Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                    }
+                } else if let Some(hl) = highlighter {
+                    let (annotations, new_state) = hl.highlight_line(line, line_idx, state);
+                    self.highlight_cache.insert(
+                        line_idx,
+                        (annotations.clone(), new_state, self.cache_version),
+                    );
+                    let (annotated_string, final_state) = line.get_annotated_visible_substr(
+                        left..right,
+                        query,
+                        selected_match,
+                        highlighter,
+                        new_state,
+                        Some(&annotations),
+                        selection_range,
+                    );
+                    state = final_state;
+                    Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                } else {
+                    let (annotated_string, new_state) = line.get_annotated_visible_substr(
+                        left..right,
+                        query,
+                        selected_match,
+                        None,
+                        state,
+                        None,
+                        selection_range,
+                    );
+                    state = new_state;
+                    Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                }
             } else {
                 Self::render_line(draw_row, "~")?;
+                state = HighlightState::default();
             }
         }
         Ok(())
@@ -102,32 +233,51 @@ impl View {
     }
 
     pub fn caret_position(&self) -> Position {
-        self.text_location_to_position()
-            .saturating_sub(self.scroll_offset)
+        let Position { row, col } = self
+            .text_location_to_position()
+            .saturating_sub(self.scroll_offset);
+
+        Position { row, col }
     }
 
     fn text_location_to_position(&self) -> Position {
         let row = self.text_location.line_idx;
-        let col = self
-            .buffer
-            .lines
-            .get(row)
-            .map_or(0, |line| line.width_until(self.text_location.grapheme_idx));
+        let col = self.buffer.lines.get(row).map_or(0, |line| {
+            // Note:
+            // grapheme_idx is "before the grapheme at that index"
+            // The caret position should also be "before the grapheme at that index"
+            // Therefore, we use width_until(grapheme_idx) to get the width up to that position
+            line.width_until(self.text_location.grapheme_idx)
+        });
         Position { col, row }
     }
 
-    pub fn handle_move_command(&mut self, direction: Move) {
+    pub fn handle_move_command(&mut self, move_cmd: Move) {
         let Size { height, .. } = self.size;
-        match direction {
-            Move::Up => self.move_up(1),
-            Move::Down => self.move_down(1),
-            Move::Left => self.move_left(),
-            Move::Right => self.move_right(),
-            Move::PageUp => self.move_up(height.saturating_sub(1)),
-            Move::PageDown => self.move_down(height.saturating_sub(1)),
-            Move::LineStart => self.move_to_start_of_line(),
-            Move::LineEnd => self.move_to_end_of_line(),
+
+        if move_cmd.is_selection {
+            if self.selection.is_none() {
+                self.start_selection();
+            }
+        } else {
+            self.clear_selection();
         }
+
+        match move_cmd.direction {
+            MoveDirection::Up => self.move_up(1),
+            MoveDirection::Down => self.move_down(1),
+            MoveDirection::Left => self.move_left(),
+            MoveDirection::Right => self.move_right(),
+            MoveDirection::PageUp => self.move_up(height.saturating_sub(1)),
+            MoveDirection::PageDown => self.move_down(height.saturating_sub(1)),
+            MoveDirection::LineStart => self.move_to_start_of_line(),
+            MoveDirection::LineEnd => self.move_to_end_of_line(),
+        }
+
+        if move_cmd.is_selection {
+            self.extend_selection();
+        }
+
         self.scroll_text_location_into_view();
     }
 
@@ -231,16 +381,196 @@ impl View {
         self.scroll_horizontally(col);
     }
 
+    fn start_selection(&mut self) {
+        self.selection = Some(Selection::new(self.text_location, self.text_location));
+        self.mark_redraw(true);
+    }
+
+    fn extend_selection(&mut self) {
+        if let Some(selection) = &mut self.selection {
+            selection.end = self.text_location;
+            self.mark_redraw(true);
+        } else {
+            self.start_selection();
+        }
+    }
+
+    fn clear_selection(&mut self) {
+        if self.selection.is_some() {
+            self.selection = None;
+            self.mark_redraw(true);
+        }
+    }
+
+    /// Returns the byte range of the selection on the given line, using that exact line
+    /// for grapheme→byte conversion. Must be called with the same `line` reference
+    /// that is later passed to `get_annotated_visible_substr`, so that coordinates match.
+    fn selection_byte_range_for_line(
+        sel: Selection,
+        line: &Line,
+        line_idx: usize,
+    ) -> Option<std::ops::Range<usize>> {
+        let n = sel.normalize();
+        if n.is_empty() {
+            return None;
+        }
+        if line_idx < n.start.line_idx || line_idx > n.end.line_idx {
+            return None;
+        }
+        let start_byte = if line_idx == n.start.line_idx {
+            line.grapheme_to_byte_idx(n.start.grapheme_idx)
+        } else {
+            0
+        };
+        let end_byte = if line_idx == n.end.line_idx {
+            line.grapheme_to_byte_idx(n.end.grapheme_idx)
+        } else {
+            line.line_length()
+        };
+        if start_byte < end_byte {
+            Some(start_byte..end_byte)
+        } else {
+            None
+        }
+    }
+
+    fn delete_selection(&mut self) -> bool {
+        let Some(selection) = self.selection else {
+            return false;
+        };
+
+        let normalized = selection.normalize();
+        if normalized.is_empty() {
+            return false;
+        }
+
+        let mut ranges = normalized.get_ranges(&self.buffer);
+        if ranges.is_empty() {
+            return false;
+        }
+
+        ranges.sort_by(|(a_idx, _), (b_idx, _)| b_idx.cmp(a_idx));
+
+        for (line_idx, byte_range) in ranges {
+            if let Some(line) = self.buffer.lines.get_mut(line_idx) {
+                line.delete_byte_range(byte_range);
+            }
+        }
+
+        self.text_location = normalized.start;
+        self.selection = None;
+        self.cache_version += 1;
+        self.mark_redraw(true);
+
+        true
+    }
+
+    fn selection_to_string(&self, selection: &Selection) -> Option<String> {
+        let ranges = selection.get_ranges(&self.buffer);
+        if ranges.is_empty() {
+            return None;
+        }
+
+        let mut result = String::new();
+        for (idx, (line_idx, byte_range)) in ranges.iter().enumerate() {
+            if let Some(line) = self.buffer.lines.get(*line_idx) {
+                let slice = &line[byte_range.clone()];
+                result.push_str(slice);
+                if idx + 1 < ranges.len() {
+                    result.push('\n');
+                }
+            }
+        }
+
+        Some(result)
+    }
+
+    fn copy_selection(&mut self) {
+        let Some(selection) = self.selection else {
+            return;
+        };
+
+        let Some(text) = self.selection_to_string(&selection) else {
+            return;
+        };
+
+        if let Ok(mut clipboard) = Clipboard::new() {
+            let _ = clipboard.set_text(text);
+        }
+    }
+
+    fn cut_selection(&mut self) {
+        self.copy_selection();
+        let _ = self.delete_selection();
+    }
+
+    /// Inserts the given text at the current cursor (or replaces selection).
+    /// Used by both Ctrl+V paste and bracketed paste (Event::Paste).
+    pub fn paste_text(&mut self, text: &str) {
+        if text.is_empty() {
+            return;
+        }
+
+        let text = text.replace("\r\n", "\n").replace('\r', "\n");
+
+        let _ = self.delete_selection();
+
+        for (idx, line) in text.split('\n').enumerate() {
+            if idx > 0 {
+                self.insert_newline();
+            }
+            for ch in line.chars() {
+                self.insert_char(ch);
+            }
+        }
+    }
+
+    fn paste_clipboard(&mut self) {
+        let Ok(mut clipboard) = Clipboard::new() else {
+            return;
+        };
+
+        let Ok(text) = clipboard.get_text() else {
+            return;
+        };
+
+        self.paste_text(&text);
+    }
+
     pub fn handle_edit_command(&mut self, command: Edit) {
         match command {
             Edit::Insert(character) => self.insert_char(character),
             Edit::InsertNewline => self.insert_newline(),
             Edit::Backspace => self.backspace(),
             Edit::Delete => self.delete(),
+            Edit::Copy => self.copy_selection(),
+            Edit::Cut => self.cut_selection(),
+            Edit::Paste => self.paste_clipboard(),
+            Edit::SelectAll => self.select_all(),
         }
     }
 
+    fn select_all(&mut self) {
+        self.selection = Some(Selection::new(
+            Location {
+                line_idx: 0,
+                grapheme_idx: 0,
+            },
+            Location {
+                line_idx: self.buffer.height() - 1,
+                grapheme_idx: self
+                    .buffer
+                    .lines
+                    .get(self.buffer.height() - 1)
+                    .map_or(0, Line::grapheme_count),
+            },
+        ));
+        self.mark_redraw(true);
+    }
+
     fn insert_char(&mut self, character: char) {
+        let _ = self.delete_selection();
+
         let old_len = self
             .buffer
             .lines
@@ -255,33 +585,48 @@ impl View {
 
         let grapheme_delta = new_len.saturating_sub(old_len);
         if grapheme_delta > 0 {
-            self.handle_move_command(Move::Right);
+            self.handle_move_command(Move::right(false));
         }
+        self.cache_version += 1;
         self.mark_redraw(true);
     }
 
     fn insert_newline(&mut self) {
+        let _ = self.delete_selection();
+
         self.buffer.insert_newline(self.text_location);
-        self.handle_move_command(Move::Right);
+        self.handle_move_command(Move::right(false));
+        self.cache_version += 1;
         self.mark_redraw(true);
     }
 
     pub fn load(&mut self, file_name: &str) -> Result<(), Error> {
         let buffer = Buffer::load(file_name)?;
         self.buffer = buffer;
+        self.highlight_cache.clear();
+        self.cache_version += 1;
         self.mark_redraw(true);
         Ok(())
     }
 
     fn backspace(&mut self) {
+        if self.delete_selection() {
+            return;
+        }
+
         if self.text_location.line_idx != 0 || self.text_location.grapheme_idx != 0 {
-            self.handle_move_command(Move::Left);
+            self.handle_move_command(Move::left(false));
             self.delete();
         }
     }
 
     fn delete(&mut self) {
+        if self.delete_selection() {
+            return;
+        }
+
         self.buffer.delete(self.text_location);
+        self.cache_version += 1;
         self.mark_redraw(true);
     }
 

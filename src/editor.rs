@@ -4,6 +4,7 @@ mod size;
 use line::Line;
 mod annotated_string;
 use annotated_string::{AnnotatedString, AnnotationType};
+pub mod highlight;
 mod terminal;
 use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
 use position::Position;
@@ -22,7 +23,7 @@ mod ui_components;
 use self::command::{
     Command::{self, Edit, Move, System},
     Edit::InsertNewline,
-    Move::{Down, Left, Right, Up},
+    MoveDirection,
     System::{Dismiss, Quit, Resize, Save, Search},
 };
 
@@ -91,12 +92,12 @@ impl Editor {
             }
             match read() {
                 Ok(event) => self.evaluate_event(event),
+                #[cfg(debug_assertions)]
                 Err(err) => {
-                    #[cfg(debug_assertions)]
-                    {
-                        panic!("Could not read event: {err:?}");
-                    }
+                    panic!("Could not read event: {err:?}");
                 }
+                #[cfg(not(debug_assertions))]
+                Err(_) => {}
             }
             let status = self.view.get_status();
             self.status_bar.update_status(status);
@@ -107,6 +108,17 @@ impl Editor {
     // Event
     // =========================================
     fn evaluate_event(&mut self, event: Event) {
+        if let Event::Paste(data) = event {
+            if self.prompt_type.is_none() {
+                self.view.paste_text(&data);
+            } else {
+                for ch in data.chars() {
+                    self.command_bar.handle_edit_command(command::Edit::Insert(ch));
+                }
+            }
+            return;
+        }
+
         let should_process = match &event {
             Event::Key(KeyEvent { kind, .. }) => kind == &KeyEventKind::Press,
             Event::Resize(_, _) => true,
@@ -166,8 +178,12 @@ impl Editor {
                 let query = self.command_bar.value();
                 self.view.search(&query);
             }
-            Move(Right | Down) => self.view.search_next(),
-            Move(Up | Left) => self.view.search_prev(),
+            Move(move_cmd) if matches!(move_cmd.direction, MoveDirection::Right | MoveDirection::Down) => {
+                self.view.search_next();
+            }
+            Move(move_cmd) if matches!(move_cmd.direction, MoveDirection::Up | MoveDirection::Left) => {
+                self.view.search_prev();
+            }
             System(Quit | Resize(_) | Search | Save) | Move(_) => {}
         }
     }
@@ -297,7 +313,7 @@ impl Editor {
                 .render(self.terminal_size.height.saturating_sub(2));
         }
         if self.terminal_size.height > 2 {
-            let _ = self.view.draw(0);
+            self.view.render(0);
         }
 
         let new_caret_pos = if self.in_prompt() {

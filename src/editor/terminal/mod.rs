@@ -1,5 +1,6 @@
 use super::{Position, Size};
 use crossterm::cursor::{Hide, MoveTo, Show};
+use crossterm::event::{DisableBracketedPaste, EnableBracketedPaste};
 mod attribute;
 use super::AnnotatedString;
 use attribute::Attribute;
@@ -18,6 +19,8 @@ pub struct Terminal {}
 
 impl Terminal {
     pub fn terminate() -> Result<(), Error> {
+        Self::queue_command(DisableBracketedPaste)?;
+        Self::execute()?;
         Self::leave_alternate_screen()?;
         Self::enable_line_wrap()?;
         Self::show_caret()?;
@@ -31,6 +34,7 @@ impl Terminal {
         Self::disable_line_wrap()?;
         Self::enter_alternate_screen()?;
         Self::clear_screen()?;
+        Self::queue_command(EnableBracketedPaste)?;
         Self::execute()?;
         Ok(())
     }
