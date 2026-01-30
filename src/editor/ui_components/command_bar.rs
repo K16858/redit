@@ -18,6 +18,7 @@ impl CommandBar {
             Edit::Delete | Edit::InsertNewline => {}
             Edit::Backspace => self.value.delete_last(),
             Edit::Copy | Edit::Cut | Edit::Paste => {}
+            Edit::SelectAll => {}
         }
         self.mark_redraw(true);
     }

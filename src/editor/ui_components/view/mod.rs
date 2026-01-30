@@ -5,9 +5,9 @@ use super::super::{
     terminal::Terminal,
 };
 use super::UIComponent;
+use arboard::Clipboard;
 use std::cmp::min;
 use std::collections::HashMap;
-use arboard::Clipboard;
 mod buffer;
 use buffer::Buffer;
 use std::io::Error;
@@ -115,9 +115,9 @@ impl View {
             let draw_row = origin_y + screen_row;
 
             if let Some(line) = self.buffer.lines.get(line_idx) {
-                let selection_range = self.selection.and_then(|sel| {
-                    Self::selection_byte_range_for_line(sel, line, line_idx)
-                });
+                let selection_range = self
+                    .selection
+                    .and_then(|sel| Self::selection_byte_range_for_line(sel, line, line_idx));
 
                 let left = self.scroll_offset.col;
                 let right = left + width;
@@ -546,7 +546,26 @@ impl View {
             Edit::Copy => self.copy_selection(),
             Edit::Cut => self.cut_selection(),
             Edit::Paste => self.paste_clipboard(),
+            Edit::SelectAll => self.select_all(),
         }
+    }
+
+    fn select_all(&mut self) {
+        self.selection = Some(Selection::new(
+            Location {
+                line_idx: 0,
+                grapheme_idx: 0,
+            },
+            Location {
+                line_idx: self.buffer.height() - 1,
+                grapheme_idx: self
+                    .buffer
+                    .lines
+                    .get(self.buffer.height() - 1)
+                    .map_or(0, Line::grapheme_count),
+            },
+        ));
+        self.mark_redraw(true);
     }
 
     fn insert_char(&mut self, character: char) {
