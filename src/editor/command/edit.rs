@@ -13,6 +13,7 @@ pub enum Edit {
     Copy,
     Cut,
     Paste,
+    SelectAll,
 }
 
 impl TryFrom<KeyEvent> for Edit {
@@ -23,6 +24,7 @@ impl TryFrom<KeyEvent> for Edit {
             (Char('c'), m) if m == KeyModifiers::CONTROL => Ok(Self::Copy),
             (Char('x'), m) if m == KeyModifiers::CONTROL => Ok(Self::Cut),
             (Char('v'), m) if m == KeyModifiers::CONTROL => Ok(Self::Paste),
+            (Char('a'), m) if m == KeyModifiers::CONTROL => Ok(Self::SelectAll),
             (Char(character), KeyModifiers::NONE | KeyModifiers::SHIFT) => {
                 Ok(Self::Insert(character))
             }
