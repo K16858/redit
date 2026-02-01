@@ -1,5 +1,5 @@
 use crossterm::event::{
-    KeyCode::{Down, Left, Right, Up},
+    KeyCode::{Down, Left, PageDown, PageUp, Right, Up},
     KeyEvent, KeyModifiers,
 };
 
@@ -13,6 +13,8 @@ pub struct Move {
 pub enum MoveDirection {
     PageUp,
     PageDown,
+    ScrollUp,
+    ScrollDown,
     LineStart,
     LineEnd,
     Up,
@@ -45,8 +47,10 @@ impl TryFrom<KeyEvent> for Move {
         } = event;
         let is_selection = modifiers.contains(KeyModifiers::SHIFT);
         let direction = match (code, modifiers) {
-            (Up, KeyModifiers::CONTROL) => MoveDirection::PageUp,
-            (Down, KeyModifiers::CONTROL) => MoveDirection::PageDown,
+            (Up, KeyModifiers::CONTROL) => MoveDirection::ScrollUp,
+            (Down, KeyModifiers::CONTROL) => MoveDirection::ScrollDown,
+            (PageUp, _) => MoveDirection::PageUp,
+            (PageDown, _) => MoveDirection::PageDown,
             (Left, KeyModifiers::CONTROL) => MoveDirection::LineStart,
             (Right, KeyModifiers::CONTROL) => MoveDirection::LineEnd,
             (Up, _) => MoveDirection::Up,

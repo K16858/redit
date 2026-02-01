@@ -255,6 +255,18 @@ impl View {
     pub fn handle_move_command(&mut self, move_cmd: Move) {
         let Size { height, .. } = self.size;
 
+        match move_cmd.direction {
+            MoveDirection::ScrollUp => {
+                self.scroll_only_up();
+                return;
+            }
+            MoveDirection::ScrollDown => {
+                self.scroll_only_down();
+                return;
+            }
+            _ => {}
+        }
+
         if move_cmd.is_selection {
             if self.selection.is_none() {
                 self.start_selection();
@@ -272,6 +284,7 @@ impl View {
             MoveDirection::PageDown => self.move_down(height.saturating_sub(1)),
             MoveDirection::LineStart => self.move_to_start_of_line(),
             MoveDirection::LineEnd => self.move_to_end_of_line(),
+            MoveDirection::ScrollUp | MoveDirection::ScrollDown => {}
         }
 
         if move_cmd.is_selection {
@@ -379,6 +392,22 @@ impl View {
         let Position { row, col } = self.text_location_to_position();
         self.scroll_vertically(row);
         self.scroll_horizontally(col);
+    }
+
+    fn scroll_only_up(&mut self) {
+        if self.scroll_offset.row > 0 {
+            self.scroll_offset.row -= 1;
+            self.mark_redraw(true);
+        }
+    }
+
+    fn scroll_only_down(&mut self) {
+        let Size { height, .. } = self.size;
+        let max_row = self.buffer.height().saturating_sub(height);
+        if self.scroll_offset.row < max_row {
+            self.scroll_offset.row += 1;
+            self.mark_redraw(true);
+        }
     }
 
     fn start_selection(&mut self) {
