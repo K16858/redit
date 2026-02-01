@@ -551,17 +551,18 @@ impl View {
     }
 
     fn select_all(&mut self) {
+        let last_line = self.buffer.height().saturating_sub(1);
         self.selection = Some(Selection::new(
             Location {
                 line_idx: 0,
                 grapheme_idx: 0,
             },
             Location {
-                line_idx: self.buffer.height() - 1,
+                line_idx: last_line,
                 grapheme_idx: self
                     .buffer
                     .lines
-                    .get(self.buffer.height() - 1)
+                    .get(last_line)
                     .map_or(0, Line::grapheme_count),
             },
         ));
