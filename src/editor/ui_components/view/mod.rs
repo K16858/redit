@@ -395,7 +395,7 @@ impl View {
         }
     }
 
-    fn clear_selection(&mut self) {
+    pub fn clear_selection(&mut self) {
         if self.selection.is_some() {
             self.selection = None;
             self.mark_redraw(true);

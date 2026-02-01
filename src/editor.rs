@@ -154,7 +154,8 @@ impl Editor {
         self.reset_quit_times();
 
         match command {
-            System(Quit | Resize(_) | Dismiss) => {}
+            System(Quit | Resize(_)) => {}
+            System(Dismiss) => self.view.clear_selection(),
             System(Search) => self.set_prompt(PromptType::Search),
             System(Save) => self.handle_save(),
             Edit(edit_command) => self.view.handle_edit_command(edit_command),
