@@ -387,7 +387,7 @@ impl Line {
             idx -= 1;
         }
         if idx == 0 {
-            return None;
+            return Some(0);
         }
         idx -= 1;
         if self.is_angle_close_at(idx) {
