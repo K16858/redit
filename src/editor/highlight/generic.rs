@@ -55,6 +55,7 @@ impl GenericHighlighter {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn find_string_ranges(
     string: &str,
     state: &mut HighlightState,
@@ -223,17 +224,15 @@ fn find_keyword_at(line: &str, keyword: &str, pos: usize) -> bool {
         None
     };
 
-    if let Some(keyword_first_char) = keyword.chars().next() {
-        if keyword_first_char.is_uppercase() {
-            if let Some(prev_ch) = prev_char {
-                if is_camel_case_boundary(prev_ch, keyword_first_char) {
-                    return false;
-                }
-            }
-        }
+    if let Some(keyword_first_char) = keyword.chars().next()
+        && keyword_first_char.is_uppercase()
+        && let Some(prev_ch) = prev_char
+        && is_camel_case_boundary(prev_ch, keyword_first_char)
+    {
+        return false;
     }
 
-    let before_ok = prev_char.map_or(true, |ch| is_word_boundary(ch));
+    let before_ok = prev_char.is_none_or(is_word_boundary);
 
     let after_pos = pos + keyword.len();
     let after_ok = if after_pos >= line.len() {
@@ -246,7 +245,7 @@ fn find_keyword_at(line: &str, keyword: &str, pos: usize) -> bool {
                 break;
             }
         }
-        next_char.map_or(true, |ch| is_word_boundary(ch))
+        next_char.is_none_or(is_word_boundary)
     };
 
     before_ok && after_ok
@@ -289,7 +288,7 @@ impl Highlighter for GenericHighlighter {
             string_ranges.iter().any(|range| range.contains(&pos))
                 || continuation_range
                     .as_ref()
-                    .map_or(false, |range| range.contains(&pos))
+                    .is_some_and(|range| range.contains(&pos))
         };
 
         // Block comments
@@ -473,11 +472,11 @@ impl Highlighter for GenericHighlighter {
 
             if ch.is_uppercase() {
                 // Only consider this a type name start if the previous character is a word boundary
-                if let Some(prev) = prev_char {
-                    if !is_word_boundary(prev) {
-                        prev_char = Some(ch);
-                        continue;
-                    }
+                if let Some(prev) = prev_char
+                    && !is_word_boundary(prev)
+                {
+                    prev_char = Some(ch);
+                    continue;
                 }
 
                 let start = byte_idx;
@@ -497,7 +496,7 @@ impl Highlighter for GenericHighlighter {
                     next_char = Some(ch_after);
                 }
 
-                let after_ok = next_char.map_or(true, |c| is_word_boundary(c));
+                let after_ok = next_char.is_none_or(is_word_boundary);
 
                 if after_ok {
                     let word = &line[start..end];

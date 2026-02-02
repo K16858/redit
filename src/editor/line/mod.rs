@@ -16,6 +16,17 @@ use super::highlight::{HighlightAnnotation, Highlighter};
 use super::{AnnotatedString, AnnotationType};
 use crate::editor::highlight::HighlightState;
 
+/// Parameters for `get_annotated_visible_substr` to avoid too many arguments.
+pub struct GetAnnotatedVisibleSubstrParams<'a> {
+    pub range: Range<usize>,
+    pub query: Option<&'a str>,
+    pub selected_match: Option<usize>,
+    pub highlighter: Option<&'a dyn Highlighter>,
+    pub state: HighlightState,
+    pub cached_annotations: Option<&'a [HighlightAnnotation]>,
+    pub selection_range: Option<Range<usize>>,
+}
+
 #[derive(Default, Clone)]
 pub struct Line {
     fragments: Vec<TextFragment>,
@@ -94,15 +105,15 @@ impl Line {
     }
 
     pub fn get_visible_graphemes(&self, range: Range<usize>) -> String {
-        self.get_annotated_visible_substr(
+        self.get_annotated_visible_substr(GetAnnotatedVisibleSubstrParams {
             range,
-            None,
-            None,
-            None,
-            HighlightState::default(),
-            None,
-            None,
-        )
+            query: None,
+            selected_match: None,
+            highlighter: None,
+            state: HighlightState::default(),
+            cached_annotations: None,
+            selection_range: None,
+        })
         .0
         .to_string()
     }
@@ -113,14 +124,17 @@ impl Line {
 
     pub fn get_annotated_visible_substr(
         &self,
-        range: Range<usize>,
-        query: Option<&str>,
-        selected_match: Option<usize>,
-        highlighter: Option<&dyn Highlighter>,
-        state: HighlightState,
-        cached_annotations: Option<&[HighlightAnnotation]>,
-        selection_range: Option<Range<usize>>,
+        params: GetAnnotatedVisibleSubstrParams<'_>,
     ) -> (AnnotatedString, HighlightState) {
+        let GetAnnotatedVisibleSubstrParams {
+            range,
+            query,
+            selected_match,
+            highlighter,
+            state,
+            cached_annotations,
+            selection_range,
+        } = params;
         if range.start >= range.end {
             return (AnnotatedString::default(), state);
         }
@@ -328,58 +342,47 @@ impl Line {
     pub fn is_whitespace_at(&self, grapheme_idx: usize) -> bool {
         self.fragments
             .get(grapheme_idx)
-            .map(|f| f.grapheme.chars().all(|c| c.is_whitespace()))
-            .unwrap_or(false)
+            .is_some_and(|f| f.grapheme.chars().all(char::is_whitespace))
     }
 
     /// Returns true if the grapheme at `grapheme_idx` is a word delimiter (whitespace, `,`, `;`, newline).
     #[allow(dead_code)]
     pub fn is_word_delimiter_at(&self, grapheme_idx: usize) -> bool {
-        self.fragments
-            .get(grapheme_idx)
-            .map(|f| {
-                f.grapheme
-                    .chars()
-                    .all(|c| c.is_whitespace() || c == ',' || c == ';' || c == '\n' || c == '\r')
-            })
-            .unwrap_or(false)
+        self.fragments.get(grapheme_idx).is_some_and(|f| {
+            f.grapheme
+                .chars()
+                .all(|c| c.is_whitespace() || c == ',' || c == ';' || c == '\n' || c == '\r')
+        })
     }
 
     /// Word for Ctrl+Left/Right: identifier (alphanumeric + `_`) or angle-bracket block `<`..`>`.
     fn is_identifier_at(&self, grapheme_idx: usize) -> bool {
         self.fragments
             .get(grapheme_idx)
-            .map(|f| f.grapheme.chars().all(|c| c.is_alphanumeric() || c == '_'))
-            .unwrap_or(false)
+            .is_some_and(|f| f.grapheme.chars().all(|c| c.is_alphanumeric() || c == '_'))
     }
 
     fn is_angle_open_at(&self, grapheme_idx: usize) -> bool {
         self.fragments
             .get(grapheme_idx)
-            .map(|f| f.grapheme == "<")
-            .unwrap_or(false)
+            .is_some_and(|f| f.grapheme == "<")
     }
 
     fn is_angle_close_at(&self, grapheme_idx: usize) -> bool {
         self.fragments
             .get(grapheme_idx)
-            .map(|f| f.grapheme == ">")
-            .unwrap_or(false)
+            .is_some_and(|f| f.grapheme == ">")
     }
 
-    /// Skip position: not start of identifier and not `<`. Used to skip whitespace/punctuation.
     fn is_skip_at(&self, grapheme_idx: usize) -> bool {
         !self.is_identifier_at(grapheme_idx) && !self.is_angle_open_at(grapheme_idx)
     }
 
-    /// Returns the grapheme index of the start of the previous word (identifier or `<`).
-    /// Returns `None` if already at line start.
     pub fn prev_word_start(&self, grapheme_idx: usize) -> Option<usize> {
         if grapheme_idx == 0 {
             return None;
         }
         let mut idx = grapheme_idx;
-        // Skip delimiters going left; stop at identifier or '>' (end of angle block)
         while idx > 0 && !self.is_identifier_at(idx - 1) && !self.is_angle_close_at(idx - 1) {
             idx -= 1;
         }
@@ -387,15 +390,12 @@ impl Line {
             return None;
         }
         idx -= 1;
-        // Now we're on identifier or '>'. Skip the word left.
         if self.is_angle_close_at(idx) {
-            // Skip back to '<'
             while idx > 0 && !self.is_angle_open_at(idx) {
                 idx -= 1;
             }
             Some(idx)
         } else {
-            // Identifier: skip identifier chars left
             while idx > 0 && self.is_identifier_at(idx - 1) {
                 idx -= 1;
             }
@@ -403,14 +403,10 @@ impl Line {
         }
     }
 
-    /// Returns the grapheme index where the cursor should be placed so it appears *after* the word.
-    /// (Cursor is drawn before grapheme at index N, so returning N+1 puts cursor after the char at N.)
-    /// Word = identifier run OR `<`..`>` block. E.g. `#include <stdio.h>` → 1st returns after "include", 2nd returns after `>`.
-    /// Returns `None` if no more words on this line.
     pub fn next_word_end(&self, grapheme_idx: usize) -> Option<usize> {
         let len = self.grapheme_count();
         let mut idx = grapheme_idx;
-        // Skip non-word (skip chars: not identifier, not '<')
+
         while idx < len && self.is_skip_at(idx) {
             idx += 1;
         }
@@ -424,11 +420,10 @@ impl Line {
             }
             if idx < len { Some(idx + 1) } else { None }
         } else {
-            // Identifier: skip to end; cursor goes after last char
             while idx < len && self.is_identifier_at(idx) {
                 idx += 1;
             }
-            Some(idx) // cursor after last char of identifier
+            Some(idx)
         }
     }
 
@@ -530,15 +525,15 @@ mod tests {
     #[test]
     fn selection_annotation_applied_for_mid_line_range() {
         let line = Line::from("abcdef");
-        let (ann, _) = line.get_annotated_visible_substr(
-            0..80,
-            None,
-            None,
-            None,
-            HighlightState::default(),
-            None,
-            Some(2..3),
-        );
+        let (ann, _) = line.get_annotated_visible_substr(GetAnnotatedVisibleSubstrParams {
+            range: 0..80,
+            query: None,
+            selected_match: None,
+            highlighter: None,
+            state: HighlightState::default(),
+            cached_annotations: None,
+            selection_range: Some(2..3),
+        });
         let mut found_selection = false;
         for part in &ann {
             if part.annotation_type == Some(AnnotationType::Selection) {

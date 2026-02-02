@@ -2,6 +2,7 @@ use super::super::{
     DocumentStatus, Line, NAME, Position, Size, VERSION,
     command::{Edit, Move, MoveDirection},
     highlight::{HighlightAnnotation, HighlightState, HighlighterRegistry},
+    line::GetAnnotatedVisibleSubstrParams,
     terminal::Terminal,
 };
 use super::UIComponent;
@@ -73,6 +74,7 @@ impl View {
         Ok(())
     }
 
+    #[allow(clippy::too_many_lines)]
     fn render_buffer(&mut self, origin_y: usize) -> Result<(), Error> {
         let Size { height, width } = self.size;
         let top = self.scroll_offset.row;
@@ -133,13 +135,15 @@ impl View {
                 {
                     if *cached_version == self.cache_version {
                         let (annotated_string, new_state) = line.get_annotated_visible_substr(
-                            left..right,
-                            query,
-                            selected_match,
-                            highlighter,
-                            *cached_state,
-                            Some(cached_annotations),
-                            selection_range,
+                            GetAnnotatedVisibleSubstrParams {
+                                range: left..right,
+                                query,
+                                selected_match,
+                                highlighter,
+                                state: *cached_state,
+                                cached_annotations: Some(cached_annotations),
+                                selection_range,
+                            },
                         );
                         state = new_state;
                         Terminal::print_annotated_row(screen_row, &annotated_string)?;
@@ -150,25 +154,29 @@ impl View {
                             (annotations.clone(), new_state, self.cache_version),
                         );
                         let (annotated_string, final_state) = line.get_annotated_visible_substr(
-                            left..right,
-                            query,
-                            selected_match,
-                            highlighter,
-                            new_state,
-                            Some(&annotations),
-                            selection_range,
+                            GetAnnotatedVisibleSubstrParams {
+                                range: left..right,
+                                query,
+                                selected_match,
+                                highlighter,
+                                state: new_state,
+                                cached_annotations: Some(&annotations),
+                                selection_range,
+                            },
                         );
                         state = final_state;
                         Terminal::print_annotated_row(screen_row, &annotated_string)?;
                     } else {
                         let (annotated_string, new_state) = line.get_annotated_visible_substr(
-                            left..right,
-                            query,
-                            selected_match,
-                            None,
-                            state,
-                            None,
-                            selection_range,
+                            GetAnnotatedVisibleSubstrParams {
+                                range: left..right,
+                                query,
+                                selected_match,
+                                highlighter: None,
+                                state,
+                                cached_annotations: None,
+                                selection_range,
+                            },
                         );
                         state = new_state;
                         Terminal::print_annotated_row(screen_row, &annotated_string)?;
@@ -180,25 +188,29 @@ impl View {
                         (annotations.clone(), new_state, self.cache_version),
                     );
                     let (annotated_string, final_state) = line.get_annotated_visible_substr(
-                        left..right,
-                        query,
-                        selected_match,
-                        highlighter,
-                        new_state,
-                        Some(&annotations),
-                        selection_range,
+                        GetAnnotatedVisibleSubstrParams {
+                            range: left..right,
+                            query,
+                            selected_match,
+                            highlighter,
+                            state: new_state,
+                            cached_annotations: Some(&annotations),
+                            selection_range,
+                        },
                     );
                     state = final_state;
                     Terminal::print_annotated_row(screen_row, &annotated_string)?;
                 } else {
                     let (annotated_string, new_state) = line.get_annotated_visible_substr(
-                        left..right,
-                        query,
-                        selected_match,
-                        None,
-                        state,
-                        None,
-                        selection_range,
+                        GetAnnotatedVisibleSubstrParams {
+                            range: left..right,
+                            query,
+                            selected_match,
+                            highlighter: None,
+                            state,
+                            cached_annotations: None,
+                            selection_range,
+                        },
                     );
                     state = new_state;
                     Terminal::print_annotated_row(screen_row, &annotated_string)?;
@@ -233,11 +245,11 @@ impl View {
     }
 
     pub fn caret_position(&self) -> Position {
-        let Position { row, col } = self
+        let Position { col, row } = self
             .text_location_to_position()
             .saturating_sub(self.scroll_offset);
 
-        Position { row, col }
+        Position { col, row }
     }
 
     fn text_location_to_position(&self) -> Position {
@@ -345,11 +357,11 @@ impl View {
     fn move_to_prev_word_start(&mut self) {
         let line_idx = self.text_location.line_idx;
         let grapheme_idx = self.text_location.grapheme_idx;
-        if let Some(line) = self.buffer.lines.get(line_idx) {
-            if let Some(idx) = line.prev_word_start(grapheme_idx) {
-                self.text_location.grapheme_idx = idx;
-                return;
-            }
+        if let Some(line) = self.buffer.lines.get(line_idx)
+            && let Some(idx) = line.prev_word_start(grapheme_idx)
+        {
+            self.text_location.grapheme_idx = idx;
+            return;
         }
         if self.text_location.line_idx > 0 {
             self.move_up(1);
@@ -365,11 +377,11 @@ impl View {
     fn move_to_next_word_start(&mut self) {
         let line_idx = self.text_location.line_idx;
         let grapheme_idx = self.text_location.grapheme_idx;
-        if let Some(line) = self.buffer.lines.get(line_idx) {
-            if let Some(idx) = line.next_word_end(grapheme_idx) {
-                self.text_location.grapheme_idx = idx;
-                return;
-            }
+        if let Some(line) = self.buffer.lines.get(line_idx)
+            && let Some(idx) = line.next_word_end(grapheme_idx)
+        {
+            self.text_location.grapheme_idx = idx;
+            return;
         }
         if self.text_location.line_idx < self.buffer.height().saturating_sub(1) {
             self.move_down(1);
@@ -574,7 +586,7 @@ impl View {
     }
 
     /// Inserts the given text at the current cursor (or replaces selection).
-    /// Used by both Ctrl+V paste and bracketed paste (Event::Paste).
+    /// Used by both Ctrl+V paste and bracketed paste (`Event::Paste`).
     pub fn paste_text(&mut self, text: &str) {
         if text.is_empty() {
             return;
