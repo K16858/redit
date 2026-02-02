@@ -113,6 +113,29 @@ impl Terminal {
         Ok(())
     }
 
+    pub fn print_annotated_row_with_prefix(
+        row: usize,
+        prefix: &str,
+        annotated_string: &AnnotatedString,
+    ) -> Result<(), Error> {
+        Self::move_caret_to(Position { row, col: 0 })?;
+        Self::clear_line()?;
+        Self::print(prefix)?;
+        annotated_string
+            .into_iter()
+            .try_for_each(|part| -> Result<(), Error> {
+                if let Some(annotation_type) = part.annotation_type {
+                    let attribute: Attribute = annotation_type.into();
+                    Self::set_attribute(&attribute)?;
+                }
+
+                Self::print(part.string)?;
+                Self::reset_color()?;
+                Ok(())
+            })?;
+        Ok(())
+    }
+
     fn set_attribute(attribute: &Attribute) -> Result<(), Error> {
         if let Some(foreground_color) = attribute.foreground {
             Self::queue_command(SetForegroundColor(foreground_color))?;
