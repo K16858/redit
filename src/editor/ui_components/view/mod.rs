@@ -74,9 +74,12 @@ impl View {
         Ok(())
     }
 
+    const GUTTER_WIDTH: usize = 5;
+
     #[allow(clippy::too_many_lines)]
     fn render_buffer(&mut self, origin_y: usize) -> Result<(), Error> {
         let Size { height, width } = self.size;
+        let content_width = width.saturating_sub(Self::GUTTER_WIDTH);
         let top = self.scroll_offset.row;
 
         let highlighter = self
@@ -122,7 +125,8 @@ impl View {
                     .and_then(|sel| Self::selection_byte_range_for_line(sel, line, line_idx));
 
                 let left = self.scroll_offset.col;
-                let right = left + width;
+                let right = left + content_width;
+                let line_num_str = format!("{:>w$} ", line_idx + 1, w = Self::GUTTER_WIDTH - 1);
                 let query = self
                     .search_info
                     .as_ref()
@@ -146,7 +150,11 @@ impl View {
                             },
                         );
                         state = new_state;
-                        Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                        Terminal::print_annotated_row_with_prefix(
+                            draw_row,
+                            &line_num_str,
+                            &annotated_string,
+                        )?;
                     } else if let Some(hl) = highlighter {
                         let (annotations, new_state) = hl.highlight_line(line, line_idx, state);
                         self.highlight_cache.insert(
@@ -165,7 +173,11 @@ impl View {
                             },
                         );
                         state = final_state;
-                        Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                        Terminal::print_annotated_row_with_prefix(
+                            draw_row,
+                            &line_num_str,
+                            &annotated_string,
+                        )?;
                     } else {
                         let (annotated_string, new_state) = line.get_annotated_visible_substr(
                             GetAnnotatedVisibleSubstrParams {
@@ -179,7 +191,11 @@ impl View {
                             },
                         );
                         state = new_state;
-                        Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                        Terminal::print_annotated_row_with_prefix(
+                            draw_row,
+                            &line_num_str,
+                            &annotated_string,
+                        )?;
                     }
                 } else if let Some(hl) = highlighter {
                     let (annotations, new_state) = hl.highlight_line(line, line_idx, state);
@@ -199,7 +215,11 @@ impl View {
                         },
                     );
                     state = final_state;
-                    Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                    Terminal::print_annotated_row_with_prefix(
+                        draw_row,
+                        &line_num_str,
+                        &annotated_string,
+                    )?;
                 } else {
                     let (annotated_string, new_state) = line.get_annotated_visible_substr(
                         GetAnnotatedVisibleSubstrParams {
@@ -213,10 +233,15 @@ impl View {
                         },
                     );
                     state = new_state;
-                    Terminal::print_annotated_row(screen_row, &annotated_string)?;
+                    Terminal::print_annotated_row_with_prefix(
+                        draw_row,
+                        &line_num_str,
+                        &annotated_string,
+                    )?;
                 }
             } else {
-                Self::render_line(draw_row, "~")?;
+                let empty_prefix = " ".repeat(Self::GUTTER_WIDTH);
+                Self::render_line(draw_row, &format!("{empty_prefix}~"))?;
                 state = HighlightState::default();
             }
         }
