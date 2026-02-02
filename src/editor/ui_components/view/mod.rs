@@ -276,7 +276,11 @@ impl View {
             .text_location_to_position()
             .saturating_sub(self.scroll_offset);
 
-        Position { col, row }
+        let gutter_total = Self::GUTTER_WIDTH + Self::GUTTER_PADDING;
+        Position {
+            col: col + gutter_total,
+            row,
+        }
     }
 
     fn text_location_to_position(&self) -> Position {
