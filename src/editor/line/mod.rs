@@ -324,6 +324,63 @@ impl Line {
         self.string.len()
     }
 
+    #[allow(dead_code)]
+    pub fn is_whitespace_at(&self, grapheme_idx: usize) -> bool {
+        self.fragments
+            .get(grapheme_idx)
+            .map(|f| f.grapheme.chars().all(|c| c.is_whitespace()))
+            .unwrap_or(false)
+    }
+
+    /// Returns true if the grapheme at `grapheme_idx` is a word delimiter (whitespace, `,`, `;`, newline).
+    pub fn is_word_delimiter_at(&self, grapheme_idx: usize) -> bool {
+        self.fragments
+            .get(grapheme_idx)
+            .map(|f| {
+                f.grapheme
+                    .chars()
+                    .all(|c| c.is_whitespace() || c == ',' || c == ';' || c == '\n' || c == '\r')
+            })
+            .unwrap_or(false)
+    }
+
+    /// Returns the grapheme index of the start of the word to the left of `grapheme_idx`.
+    /// Word boundaries are defined by whitespace and punctuation (`,`, `;`, newline). Returns `None` if already at line start.
+    pub fn prev_word_start(&self, grapheme_idx: usize) -> Option<usize> {
+        if grapheme_idx == 0 {
+            return None;
+        }
+        let mut idx = grapheme_idx;
+        while idx > 0 && self.is_word_delimiter_at(idx - 1) {
+            idx -= 1;
+        }
+        while idx > 0 && !self.is_word_delimiter_at(idx - 1) {
+            idx -= 1;
+        }
+        Some(idx)
+    }
+
+    /// Returns the grapheme index of the start of the next word to the right of `grapheme_idx`.
+    /// Returns `None` if no more words on this line.
+    pub fn next_word_start(&self, grapheme_idx: usize) -> Option<usize> {
+        let len = self.grapheme_count();
+        if grapheme_idx >= len {
+            return None;
+        }
+        let mut idx = grapheme_idx;
+        while idx < len && !self.is_word_delimiter_at(idx) {
+            idx += 1;
+        }
+        while idx < len && self.is_word_delimiter_at(idx) {
+            idx += 1;
+        }
+        if idx < len {
+            Some(idx)
+        } else {
+            None
+        }
+    }
+
     pub fn search_forward(&self, query: &str, from_grapheme_idx: usize) -> Option<usize> {
         debug_assert!(from_grapheme_idx <= self.grapheme_count());
         if from_grapheme_idx == self.grapheme_count() {
