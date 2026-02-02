@@ -118,10 +118,13 @@ impl Terminal {
         row: usize,
         prefix: &str,
         annotated_string: &AnnotatedString,
+        highlight_prefix: bool,
     ) -> Result<(), Error> {
         Self::move_caret_to(Position { row, col: 0 })?;
         Self::clear_line()?;
-        Self::queue_command(SetForegroundColor(Color::DarkGrey))?;
+        if !highlight_prefix {
+            Self::queue_command(SetForegroundColor(Color::DarkGrey))?;
+        }
         Self::print(prefix)?;
         Self::reset_color()?;
         annotated_string

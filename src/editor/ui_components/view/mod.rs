@@ -160,6 +160,7 @@ impl View {
                             draw_row,
                             &line_num_str,
                             &annotated_string,
+                            line_idx == self.text_location.line_idx,
                         )?;
                     } else if let Some(hl) = highlighter {
                         let (annotations, new_state) = hl.highlight_line(line, line_idx, state);
@@ -182,6 +183,7 @@ impl View {
                             draw_row,
                             &line_num_str,
                             &annotated_string,
+                            line_idx == self.text_location.line_idx,
                         )?;
                     } else {
                         let (annotated_string, new_state) =
@@ -199,6 +201,7 @@ impl View {
                             draw_row,
                             &line_num_str,
                             &annotated_string,
+                            line_idx == self.text_location.line_idx,
                         )?;
                     }
                 } else if let Some(hl) = highlighter {
@@ -222,6 +225,7 @@ impl View {
                         draw_row,
                         &line_num_str,
                         &annotated_string,
+                        line_idx == self.text_location.line_idx,
                     )?;
                 } else {
                     let (annotated_string, new_state) =
@@ -239,6 +243,7 @@ impl View {
                         draw_row,
                         &line_num_str,
                         &annotated_string,
+                        line_idx == self.text_location.line_idx,
                     )?;
                 }
             } else {
@@ -337,6 +342,7 @@ impl View {
         }
 
         self.scroll_text_location_into_view();
+        self.mark_redraw(true);
     }
 
     fn move_up(&mut self, step: usize) {
