@@ -15,6 +15,8 @@ pub enum MoveDirection {
     PageDown,
     ScrollUp,
     ScrollDown,
+    WordLeft,
+    WordRight,
     LineStart,
     LineEnd,
     Up,
@@ -51,6 +53,12 @@ impl TryFrom<KeyEvent> for Move {
             (Down, KeyModifiers::CONTROL) => MoveDirection::ScrollDown,
             (PageUp, _) => MoveDirection::PageUp,
             (PageDown, _) => MoveDirection::PageDown,
+            (Left, m) if m.contains(KeyModifiers::CONTROL) && m.contains(KeyModifiers::SHIFT) => {
+                MoveDirection::WordLeft
+            }
+            (Right, m) if m.contains(KeyModifiers::CONTROL) && m.contains(KeyModifiers::SHIFT) => {
+                MoveDirection::WordRight
+            }
             (Left, KeyModifiers::CONTROL) => MoveDirection::LineStart,
             (Right, KeyModifiers::CONTROL) => MoveDirection::LineEnd,
             (Up, _) => MoveDirection::Up,
