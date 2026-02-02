@@ -1,5 +1,5 @@
 use crossterm::event::{
-    KeyCode::{Down, Left, PageDown, PageUp, Right, Up},
+    KeyCode::{Down, End, Home, Left, PageDown, PageUp, Right, Up},
     KeyEvent, KeyModifiers,
 };
 
@@ -59,8 +59,10 @@ impl TryFrom<KeyEvent> for Move {
             (Right, m) if m.contains(KeyModifiers::CONTROL) && m.contains(KeyModifiers::SHIFT) => {
                 MoveDirection::WordRight
             }
-            (Left, KeyModifiers::CONTROL) => MoveDirection::LineStart,
-            (Right, KeyModifiers::CONTROL) => MoveDirection::LineEnd,
+            (Left, KeyModifiers::CONTROL) => MoveDirection::WordLeft,
+            (Right, KeyModifiers::CONTROL) => MoveDirection::WordRight,
+            (Home, _) => MoveDirection::LineStart,
+            (End, _) => MoveDirection::LineEnd,
             (Up, _) => MoveDirection::Up,
             (Down, _) => MoveDirection::Down,
             (Left, _) => MoveDirection::Left,
