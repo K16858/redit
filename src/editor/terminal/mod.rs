@@ -92,6 +92,7 @@ impl Terminal {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn print_annotated_row(
         row: usize,
         annotated_string: &AnnotatedString,
