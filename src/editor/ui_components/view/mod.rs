@@ -75,11 +75,13 @@ impl View {
     }
 
     const GUTTER_WIDTH: usize = 5;
+    const GUTTER_PADDING: usize = 2;
 
     #[allow(clippy::too_many_lines)]
     fn render_buffer(&mut self, origin_y: usize) -> Result<(), Error> {
         let Size { height, width } = self.size;
-        let content_width = width.saturating_sub(Self::GUTTER_WIDTH);
+        let gutter_total = Self::GUTTER_WIDTH + Self::GUTTER_PADDING;
+        let content_width = width.saturating_sub(gutter_total);
         let top = self.scroll_offset.row;
 
         let highlighter = self
@@ -126,7 +128,12 @@ impl View {
 
                 let left = self.scroll_offset.col;
                 let right = left + content_width;
-                let line_num_str = format!("{:>w$} ", line_idx + 1, w = Self::GUTTER_WIDTH - 1);
+                let line_num_str = format!(
+                    "{:>w$}{pad}",
+                    line_idx + 1,
+                    w = Self::GUTTER_WIDTH - 1,
+                    pad = " ".repeat(Self::GUTTER_PADDING + 1)
+                );
                 let query = self
                     .search_info
                     .as_ref()
@@ -138,8 +145,8 @@ impl View {
                     self.highlight_cache.get(&line_idx)
                 {
                     if *cached_version == self.cache_version {
-                        let (annotated_string, new_state) = line.get_annotated_visible_substr(
-                            GetAnnotatedVisibleSubstrParams {
+                        let (annotated_string, new_state) =
+                            line.get_annotated_visible_substr(GetAnnotatedVisibleSubstrParams {
                                 range: left..right,
                                 query,
                                 selected_match,
@@ -147,8 +154,7 @@ impl View {
                                 state: *cached_state,
                                 cached_annotations: Some(cached_annotations),
                                 selection_range,
-                            },
-                        );
+                            });
                         state = new_state;
                         Terminal::print_annotated_row_with_prefix(
                             draw_row,
@@ -161,8 +167,8 @@ impl View {
                             line_idx,
                             (annotations.clone(), new_state, self.cache_version),
                         );
-                        let (annotated_string, final_state) = line.get_annotated_visible_substr(
-                            GetAnnotatedVisibleSubstrParams {
+                        let (annotated_string, final_state) =
+                            line.get_annotated_visible_substr(GetAnnotatedVisibleSubstrParams {
                                 range: left..right,
                                 query,
                                 selected_match,
@@ -170,8 +176,7 @@ impl View {
                                 state: new_state,
                                 cached_annotations: Some(&annotations),
                                 selection_range,
-                            },
-                        );
+                            });
                         state = final_state;
                         Terminal::print_annotated_row_with_prefix(
                             draw_row,
@@ -179,8 +184,8 @@ impl View {
                             &annotated_string,
                         )?;
                     } else {
-                        let (annotated_string, new_state) = line.get_annotated_visible_substr(
-                            GetAnnotatedVisibleSubstrParams {
+                        let (annotated_string, new_state) =
+                            line.get_annotated_visible_substr(GetAnnotatedVisibleSubstrParams {
                                 range: left..right,
                                 query,
                                 selected_match,
@@ -188,8 +193,7 @@ impl View {
                                 state,
                                 cached_annotations: None,
                                 selection_range,
-                            },
-                        );
+                            });
                         state = new_state;
                         Terminal::print_annotated_row_with_prefix(
                             draw_row,
@@ -203,8 +207,8 @@ impl View {
                         line_idx,
                         (annotations.clone(), new_state, self.cache_version),
                     );
-                    let (annotated_string, final_state) = line.get_annotated_visible_substr(
-                        GetAnnotatedVisibleSubstrParams {
+                    let (annotated_string, final_state) =
+                        line.get_annotated_visible_substr(GetAnnotatedVisibleSubstrParams {
                             range: left..right,
                             query,
                             selected_match,
@@ -212,8 +216,7 @@ impl View {
                             state: new_state,
                             cached_annotations: Some(&annotations),
                             selection_range,
-                        },
-                    );
+                        });
                     state = final_state;
                     Terminal::print_annotated_row_with_prefix(
                         draw_row,
@@ -221,8 +224,8 @@ impl View {
                         &annotated_string,
                     )?;
                 } else {
-                    let (annotated_string, new_state) = line.get_annotated_visible_substr(
-                        GetAnnotatedVisibleSubstrParams {
+                    let (annotated_string, new_state) =
+                        line.get_annotated_visible_substr(GetAnnotatedVisibleSubstrParams {
                             range: left..right,
                             query,
                             selected_match,
@@ -230,8 +233,7 @@ impl View {
                             state,
                             cached_annotations: None,
                             selection_range,
-                        },
-                    );
+                        });
                     state = new_state;
                     Terminal::print_annotated_row_with_prefix(
                         draw_row,
@@ -240,7 +242,7 @@ impl View {
                     )?;
                 }
             } else {
-                let empty_prefix = " ".repeat(Self::GUTTER_WIDTH);
+                let empty_prefix = " ".repeat(Self::GUTTER_WIDTH + Self::GUTTER_PADDING);
                 Self::render_line(draw_row, &format!("{empty_prefix}~"))?;
                 state = HighlightState::default();
             }
@@ -393,8 +395,7 @@ impl View {
             self.move_to_end_of_line();
             if let Some(line) = self.buffer.lines.get(self.text_location.line_idx) {
                 let end = line.grapheme_count();
-                self.text_location.grapheme_idx =
-                    line.prev_word_start(end).unwrap_or(0);
+                self.text_location.grapheme_idx = line.prev_word_start(end).unwrap_or(0);
             }
         }
     }
