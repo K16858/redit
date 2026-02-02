@@ -366,7 +366,7 @@ impl View {
         let line_idx = self.text_location.line_idx;
         let grapheme_idx = self.text_location.grapheme_idx;
         if let Some(line) = self.buffer.lines.get(line_idx) {
-            if let Some(idx) = line.next_word_start(grapheme_idx) {
+            if let Some(idx) = line.next_word_end(grapheme_idx) {
                 self.text_location.grapheme_idx = idx;
                 return;
             }
@@ -375,12 +375,7 @@ impl View {
             self.move_down(1);
             self.move_to_start_of_line();
             if let Some(line) = self.buffer.lines.get(self.text_location.line_idx) {
-                self.text_location.grapheme_idx =
-                    if line.grapheme_count() > 0 && line.is_word_delimiter_at(0) {
-                        line.next_word_start(0).unwrap_or(0)
-                    } else {
-                        0
-                    };
+                self.text_location.grapheme_idx = line.next_word_end(0).unwrap_or(0);
             }
         }
     }
