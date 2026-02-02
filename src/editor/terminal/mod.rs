@@ -6,7 +6,7 @@ use super::AnnotatedString;
 use attribute::Attribute;
 use crossterm::style::{
     Attribute::{Reset, Reverse},
-    Print, ResetColor, SetBackgroundColor, SetForegroundColor,
+    Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor,
 };
 use crossterm::terminal::{
     Clear, ClearType, DisableLineWrap, EnableLineWrap, EnterAlternateScreen, LeaveAlternateScreen,
@@ -121,7 +121,9 @@ impl Terminal {
     ) -> Result<(), Error> {
         Self::move_caret_to(Position { row, col: 0 })?;
         Self::clear_line()?;
+        Self::queue_command(SetForegroundColor(Color::DarkGrey))?;
         Self::print(prefix)?;
+        Self::reset_color()?;
         annotated_string
             .into_iter()
             .try_for_each(|part| -> Result<(), Error> {
