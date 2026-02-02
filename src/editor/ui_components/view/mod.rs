@@ -282,6 +282,8 @@ impl View {
             MoveDirection::Right => self.move_right(),
             MoveDirection::PageUp => self.move_up(height.saturating_sub(1)),
             MoveDirection::PageDown => self.move_down(height.saturating_sub(1)),
+            MoveDirection::WordLeft => self.move_to_prev_word_start(),
+            MoveDirection::WordRight => self.move_to_next_word_start(),
             MoveDirection::LineStart => self.move_to_start_of_line(),
             MoveDirection::LineEnd => self.move_to_end_of_line(),
             MoveDirection::ScrollUp | MoveDirection::ScrollDown => {}
@@ -338,6 +340,49 @@ impl View {
             .lines
             .get(self.text_location.line_idx)
             .map_or(0, Line::grapheme_count);
+    }
+
+    fn move_to_prev_word_start(&mut self) {
+        let line_idx = self.text_location.line_idx;
+        let grapheme_idx = self.text_location.grapheme_idx;
+        if let Some(line) = self.buffer.lines.get(line_idx) {
+            if let Some(idx) = line.prev_word_start(grapheme_idx) {
+                self.text_location.grapheme_idx = idx;
+                return;
+            }
+        }
+        if self.text_location.line_idx > 0 {
+            self.move_up(1);
+            self.move_to_end_of_line();
+            if let Some(line) = self.buffer.lines.get(self.text_location.line_idx) {
+                let end = line.grapheme_count();
+                self.text_location.grapheme_idx =
+                    line.prev_word_start(end).unwrap_or(0);
+            }
+        }
+    }
+
+    fn move_to_next_word_start(&mut self) {
+        let line_idx = self.text_location.line_idx;
+        let grapheme_idx = self.text_location.grapheme_idx;
+        if let Some(line) = self.buffer.lines.get(line_idx) {
+            if let Some(idx) = line.next_word_start(grapheme_idx) {
+                self.text_location.grapheme_idx = idx;
+                return;
+            }
+        }
+        if self.text_location.line_idx < self.buffer.height().saturating_sub(1) {
+            self.move_down(1);
+            self.move_to_start_of_line();
+            if let Some(line) = self.buffer.lines.get(self.text_location.line_idx) {
+                self.text_location.grapheme_idx =
+                    if line.grapheme_count() > 0 && line.is_word_delimiter_at(0) {
+                        line.next_word_start(0).unwrap_or(0)
+                    } else {
+                        0
+                    };
+            }
+        }
     }
 
     fn snap_to_valid_grapheme(&mut self) {
