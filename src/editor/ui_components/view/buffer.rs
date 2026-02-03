@@ -2,6 +2,7 @@ use super::{FileInfo, Line, Location};
 use std::fs::{File, read_to_string};
 use std::io::Error;
 use std::io::Write;
+use std::cmp::min;
 
 #[derive(Default)]
 pub struct Buffer {
@@ -97,6 +98,22 @@ impl Buffer {
             self.lines.insert(at.line_idx.saturating_add(1), new);
             self.modified = true;
         }
+    }
+
+    pub fn insert_string(&mut self, mut at: Location, text: &str) -> Location {
+        let sanitized = text.replace("\r\n", "\n").replace('\r', "\n");
+        for (idx, line_text) in sanitized.split('\n').enumerate() {
+            if idx > 0 {
+                self.insert_newline(at);
+                at.line_idx += 1;
+                at.grapheme_idx = 0;
+            }
+            for ch in line_text.chars() {
+                self.insert_char(ch, at);
+                at.grapheme_idx += 1;
+            }
+        }
+        at
     }
 
     pub fn search_forward(&self, query: &str, from: Location) -> Option<Location> {

@@ -23,7 +23,7 @@ use search_direction::SearchDirection;
 mod selection;
 use selection::Selection;
 mod undo;
-use undo::{EditOp, UndoHistory};
+use undo::UndoHistory;
 
 type HighlightCache = HashMap<usize, (Vec<HighlightAnnotation>, HighlightState, u64)>;
 
