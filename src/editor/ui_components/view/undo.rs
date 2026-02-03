@@ -1,0 +1,52 @@
+use super::location::Location;
+
+#[derive(Clone, Debug)]
+pub enum EditOp {
+    Insert { at: Location, text: String },
+    Delete { at: Location, text: String },
+}
+
+#[derive(Default)]
+pub struct UndoHistory {
+    undo_stack: Vec<EditOp>,
+    redo_stack: Vec<EditOp>,
+}
+
+impl UndoHistory {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn push_edit(&mut self, op: EditOp) {
+        self.undo_stack.push(op);
+    }
+
+    pub fn pop_undo(&mut self) -> Option<EditOp> {
+        self.undo_stack.pop()
+    }
+
+    pub fn pop_redo(&mut self) -> Option<EditOp> {
+        self.redo_stack.pop()
+    }
+
+    pub fn push_redo(&mut self, op: EditOp) {
+        self.redo_stack.push(op);
+    }
+
+    pub fn clear_redo(&mut self) {
+        self.redo_stack.clear();
+    }
+
+    pub fn clear_all(&mut self) {
+        self.undo_stack.clear();
+        self.redo_stack.clear();
+    }
+
+    pub fn has_undo(&self) -> bool {
+        !self.undo_stack.is_empty()
+    }
+
+    pub fn has_redo(&self) -> bool {
+        !self.redo_stack.is_empty()
+    }
+}

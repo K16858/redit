@@ -22,6 +22,8 @@ mod search_direction;
 use search_direction::SearchDirection;
 mod selection;
 use selection::Selection;
+mod undo;
+use undo::{EditOp, UndoHistory};
 
 type HighlightCache = HashMap<usize, (Vec<HighlightAnnotation>, HighlightState, u64)>;
 
@@ -37,6 +39,7 @@ pub struct View {
     highlight_cache: HighlightCache,
     cache_version: u64,
     selection: Option<Selection>,
+    undo_history: UndoHistory,
 }
 
 impl View {
