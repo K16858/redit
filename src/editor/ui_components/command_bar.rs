@@ -15,7 +15,8 @@ impl CommandBar {
     pub fn handle_edit_command(&mut self, command: Edit) {
         match command {
             Edit::Insert(character) => self.value.append_char(character),
-            Edit::Delete | Edit::InsertNewline | Edit::Copy | Edit::Cut | Edit::Paste | Edit::SelectAll => {}
+            Edit::Delete | Edit::InsertNewline | Edit::Copy | Edit::Cut | Edit::Paste
+            | Edit::SelectAll | Edit::Undo | Edit::Redo => {}
             Edit::Backspace => self.value.delete_last(),
         }
         self.mark_redraw(true);

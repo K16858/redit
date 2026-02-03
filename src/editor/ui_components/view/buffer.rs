@@ -2,7 +2,6 @@ use super::{FileInfo, Line, Location};
 use std::fs::{File, read_to_string};
 use std::io::Error;
 use std::io::Write;
-use std::cmp::min;
 
 #[derive(Default)]
 pub struct Buffer {
@@ -114,6 +113,104 @@ impl Buffer {
             }
         }
         at
+    }
+
+    /// Returns the single grapheme at the given location, for undo/redo recording.
+    pub fn content_at(&self, loc: Location) -> Option<String> {
+        self.lines
+            .get(loc.line_idx)
+            .and_then(|line| line.grapheme_at(loc.grapheme_idx))
+    }
+
+    /// Returns the content that would be deleted by `delete(loc)` (grapheme or newline).
+    pub fn content_deleted_at(&self, loc: Location) -> Option<String> {
+        if let Some(line) = self.lines.get(loc.line_idx) {
+            if loc.grapheme_idx < line.grapheme_count() {
+                return line.grapheme_at(loc.grapheme_idx);
+            }
+            if loc.grapheme_idx >= line.grapheme_count()
+                && self.height() > loc.line_idx.saturating_add(1)
+            {
+                return Some("\n".to_string());
+            }
+        }
+        None
+    }
+
+    /// Returns the location after "walking" from `from` over the characters in `text`
+    /// (each `\n` advances to the next line, other chars advance grapheme_idx).
+    fn location_after_text(from: Location, text: &str) -> Location {
+        let mut at = from;
+        for ch in text.chars() {
+            if ch == '\n' {
+                at.line_idx += 1;
+                at.grapheme_idx = 0;
+            } else {
+                at.grapheme_idx += 1;
+            }
+        }
+        at
+    }
+
+    /// Deletes from `from` (inclusive) to `to` (exclusive). Used for undo of Insert.
+    pub fn delete_range(&mut self, from: Location, to: Location) {
+        if from.line_idx >= self.height() {
+            return;
+        }
+        if from == to {
+            return;
+        }
+        if from.line_idx == to.line_idx {
+            if let Some(line) = self.lines.get_mut(from.line_idx) {
+                let start_byte = line.grapheme_to_byte_idx(from.grapheme_idx);
+                let end_byte = line.grapheme_to_byte_idx(to.grapheme_idx);
+                if start_byte < end_byte {
+                    line.delete_byte_range(start_byte..end_byte);
+                    self.modified = true;
+                }
+            }
+            return;
+        }
+        // Multi-line: delete from `from` to end of first line, merge following lines, then delete leading span.
+        let height = self.height();
+        if to.line_idx >= height {
+            return;
+        }
+        let mut graphemes_to_drop: usize = from.grapheme_idx;
+        for idx in (from.line_idx + 1)..to.line_idx {
+            graphemes_to_drop += self.lines.get(idx).map_or(0, Line::grapheme_count);
+        }
+        graphemes_to_drop += to.grapheme_idx;
+
+        if let Some(line) = self.lines.get_mut(from.line_idx) {
+            let start_byte = line.grapheme_to_byte_idx(from.grapheme_idx);
+            let end_byte = line.line_length();
+            if start_byte < end_byte {
+                line.delete_byte_range(start_byte..end_byte);
+                self.modified = true;
+            }
+        }
+        for _ in (from.line_idx + 1)..=to.line_idx {
+            if from.line_idx + 1 >= self.lines.len() {
+                break;
+            }
+            let next_line = self.lines.remove(from.line_idx + 1);
+            self.lines[from.line_idx].append(&next_line);
+            self.modified = true;
+        }
+        if let Some(line) = self.lines.get_mut(from.line_idx) {
+            let end_byte = line.grapheme_to_byte_idx(graphemes_to_drop);
+            if end_byte > 0 {
+                line.delete_byte_range(0..end_byte);
+                self.modified = true;
+            }
+        }
+    }
+
+    /// Deletes the span of content that matches `text` starting at `from` (for undo of Insert).
+    pub fn delete_span(&mut self, from: Location, text: &str) {
+        let to = Self::location_after_text(from, text);
+        self.delete_range(from, to);
     }
 
     pub fn search_forward(&self, query: &str, from: Location) -> Option<Location> {

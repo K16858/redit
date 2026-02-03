@@ -122,6 +122,11 @@ impl Line {
         self.fragments.len()
     }
 
+    /// Returns the grapheme at the given index, for undo/redo recording.
+    pub fn grapheme_at(&self, grapheme_idx: usize) -> Option<String> {
+        self.fragments.get(grapheme_idx).map(|f| f.grapheme.clone())
+    }
+
     pub fn get_annotated_visible_substr(
         &self,
         params: GetAnnotatedVisibleSubstrParams<'_>,

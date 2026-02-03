@@ -23,7 +23,7 @@ use search_direction::SearchDirection;
 mod selection;
 use selection::Selection;
 mod undo;
-use undo::UndoHistory;
+use undo::{EditOp, UndoHistory};
 
 type HighlightCache = HashMap<usize, (Vec<HighlightAnnotation>, HighlightState, u64)>;
 
@@ -569,6 +569,8 @@ impl View {
             return false;
         }
 
+        let at = normalized.start;
+        let deleted_text = self.selection_to_string(&normalized);
         ranges.sort_by(|(a_idx, _), (b_idx, _)| b_idx.cmp(a_idx));
 
         for (line_idx, byte_range) in ranges {
@@ -577,8 +579,15 @@ impl View {
             }
         }
 
-        self.text_location = normalized.start;
+        self.text_location = at;
         self.selection = None;
+        if self.buffer.is_file_loaded() {
+            self.undo_history.clear_redo();
+            if let Some(text) = deleted_text {
+                self.undo_history.push_edit(EditOp::Delete { at, text });
+            }
+        }
+        self.buffer.modified = true;
         self.cache_version += 1;
         self.mark_redraw(true);
 
@@ -632,17 +641,29 @@ impl View {
         }
 
         let text = text.replace("\r\n", "\n").replace('\r', "\n");
-
         let _ = self.delete_selection();
 
-        for (idx, line) in text.split('\n').enumerate() {
-            if idx > 0 {
-                self.insert_newline();
-            }
-            for ch in line.chars() {
-                self.insert_char(ch);
+        if self.buffer.is_file_loaded() {
+            self.undo_history.clear_redo();
+            let at = self.text_location;
+            let new_loc = self.buffer.insert_string(at, &text);
+            self.text_location = new_loc;
+            self.undo_history.push_edit(EditOp::Insert {
+                at,
+                text: text.to_string(),
+            });
+        } else {
+            for (idx, line) in text.split('\n').enumerate() {
+                if idx > 0 {
+                    self.insert_newline();
+                }
+                for ch in line.chars() {
+                    self.insert_char(ch);
+                }
             }
         }
+        self.cache_version += 1;
+        self.mark_redraw(true);
     }
 
     fn paste_clipboard(&mut self) {
@@ -667,7 +688,55 @@ impl View {
             Edit::Cut => self.cut_selection(),
             Edit::Paste => self.paste_clipboard(),
             Edit::SelectAll => self.select_all(),
+            Edit::Undo => self.undo(),
+            Edit::Redo => self.redo(),
         }
+    }
+
+    pub fn undo(&mut self) {
+        if !self.buffer.is_file_loaded() || !self.undo_history.has_undo() {
+            return;
+        }
+        let Some(op) = self.undo_history.pop_undo() else {
+            return;
+        };
+        self.selection = None;
+        match &op {
+            EditOp::Insert { at, text } => {
+                self.buffer.delete_span(*at, text);
+                self.text_location = *at;
+            }
+            EditOp::Delete { at, text } => {
+                self.text_location = self.buffer.insert_string(*at, text);
+            }
+        }
+        self.undo_history.push_redo(op);
+        self.buffer.modified = true;
+        self.cache_version += 1;
+        self.mark_redraw(true);
+    }
+
+    pub fn redo(&mut self) {
+        if !self.buffer.is_file_loaded() || !self.undo_history.has_redo() {
+            return;
+        }
+        let Some(op) = self.undo_history.pop_redo() else {
+            return;
+        };
+        self.selection = None;
+        match &op {
+            EditOp::Insert { at, text } => {
+                self.text_location = self.buffer.insert_string(*at, text);
+            }
+            EditOp::Delete { at, text } => {
+                self.buffer.delete_span(*at, text);
+                self.text_location = *at;
+            }
+        }
+        self.undo_history.push_edit(op);
+        self.buffer.modified = true;
+        self.cache_version += 1;
+        self.mark_redraw(true);
     }
 
     fn select_all(&mut self) {
@@ -692,20 +761,28 @@ impl View {
     fn insert_char(&mut self, character: char) {
         let _ = self.delete_selection();
 
+        if self.buffer.is_file_loaded() {
+            self.undo_history.clear_redo();
+            let at = self.text_location;
+            self.buffer.insert_char(character, self.text_location);
+            self.undo_history.push_edit(EditOp::Insert {
+                at,
+                text: character.to_string(),
+            });
+        } else {
+            self.buffer.insert_char(character, self.text_location);
+        }
         let old_len = self
             .buffer
             .lines
             .get(self.text_location.line_idx)
             .map_or(0, Line::grapheme_count);
-        self.buffer.insert_char(character, self.text_location);
         let new_len = self
             .buffer
             .lines
             .get(self.text_location.line_idx)
             .map_or(0, Line::grapheme_count);
-
-        let grapheme_delta = new_len.saturating_sub(old_len);
-        if grapheme_delta > 0 {
+        if new_len > old_len {
             self.handle_move_command(Move::right(false));
         }
         self.cache_version += 1;
@@ -715,7 +792,17 @@ impl View {
     fn insert_newline(&mut self) {
         let _ = self.delete_selection();
 
-        self.buffer.insert_newline(self.text_location);
+        if self.buffer.is_file_loaded() {
+            self.undo_history.clear_redo();
+            let at = self.text_location;
+            self.buffer.insert_newline(self.text_location);
+            self.undo_history.push_edit(EditOp::Insert {
+                at,
+                text: "\n".to_string(),
+            });
+        } else {
+            self.buffer.insert_newline(self.text_location);
+        }
         self.handle_move_command(Move::right(false));
         self.cache_version += 1;
         self.mark_redraw(true);
@@ -724,6 +811,7 @@ impl View {
     pub fn load(&mut self, file_name: &str) -> Result<(), Error> {
         let buffer = Buffer::load(file_name)?;
         self.buffer = buffer;
+        self.undo_history.clear_all();
         self.highlight_cache.clear();
         self.cache_version += 1;
         self.mark_redraw(true);
@@ -736,8 +824,21 @@ impl View {
         }
 
         if self.text_location.line_idx != 0 || self.text_location.grapheme_idx != 0 {
+            if self.buffer.is_file_loaded() {
+                self.undo_history.clear_redo();
+            }
             self.handle_move_command(Move::left(false));
-            self.delete();
+            let at = self.text_location;
+            let text = self
+                .buffer
+                .content_deleted_at(at)
+                .unwrap_or_else(String::new);
+            self.buffer.delete(at);
+            if self.buffer.is_file_loaded() && !text.is_empty() {
+                self.undo_history.push_edit(EditOp::Delete { at, text });
+            }
+            self.cache_version += 1;
+            self.mark_redraw(true);
         }
     }
 
@@ -746,7 +847,16 @@ impl View {
             return;
         }
 
+        let at = self.text_location;
+        let text = self
+            .buffer
+            .content_deleted_at(at)
+            .unwrap_or_else(String::new);
         self.buffer.delete(self.text_location);
+        if self.buffer.is_file_loaded() && !text.is_empty() {
+            self.undo_history.clear_redo();
+            self.undo_history.push_edit(EditOp::Delete { at, text });
+        }
         self.cache_version += 1;
         self.mark_redraw(true);
     }
