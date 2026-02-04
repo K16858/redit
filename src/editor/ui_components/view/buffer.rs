@@ -116,6 +116,7 @@ impl Buffer {
     }
 
     /// Returns the single grapheme at the given location, for undo/redo recording.
+    #[allow(dead_code)]
     pub fn content_at(&self, loc: Location) -> Option<String> {
         self.lines
             .get(loc.line_idx)

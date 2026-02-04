@@ -761,6 +761,11 @@ impl View {
     fn insert_char(&mut self, character: char) {
         let _ = self.delete_selection();
 
+        let old_len = self
+            .buffer
+            .lines
+            .get(self.text_location.line_idx)
+            .map_or(0, Line::grapheme_count);
         if self.buffer.is_file_loaded() {
             self.undo_history.clear_redo();
             let at = self.text_location;
@@ -772,11 +777,6 @@ impl View {
         } else {
             self.buffer.insert_char(character, self.text_location);
         }
-        let old_len = self
-            .buffer
-            .lines
-            .get(self.text_location.line_idx)
-            .map_or(0, Line::grapheme_count);
         let new_len = self
             .buffer
             .lines
