@@ -306,6 +306,9 @@ impl View {
     pub fn handle_move_command(&mut self, move_cmd: Move) {
         let Size { height, .. } = self.size;
 
+        let old_line_idx = self.text_location.line_idx;
+        let old_scroll_row = self.scroll_offset.row;
+
         match move_cmd.direction {
             MoveDirection::ScrollUp => {
                 self.scroll_only_up();
@@ -345,7 +348,17 @@ impl View {
         }
 
         self.scroll_text_location_into_view();
-        self.mark_redraw(true);
+        // Note:
+        // Redraw conditions:
+        // - Selection operation (selection range changes)
+        // - Line changed (current line highlight or cursor line content changes)
+        // - Scroll position changed (displayed lines change)
+        let line_changed = self.text_location.line_idx != old_line_idx;
+        let scroll_changed = self.scroll_offset.row != old_scroll_row;
+
+        if move_cmd.is_selection || line_changed || scroll_changed {
+            self.mark_redraw(true);
+        }
     }
 
     fn move_up(&mut self, step: usize) {
