@@ -71,7 +71,7 @@ impl Editor {
         let mut editor = Self::default();
         let size = Terminal::size().unwrap_or_default();
         editor.resize(size);
-        editor.update_message("HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find");
+        // editor.update_message("HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-C = copy | Ctrl-X = cut | Ctrl-V = paste | Ctrl-F = find | Ctrl-Z = undo | Ctrl-Shift-Z = redo | Ctrl-A = select all");
 
         let args: Vec<String> = env::args().collect();
         if let Some(file_name) = args.get(1)
@@ -113,7 +113,8 @@ impl Editor {
                 self.view.paste_text(&data);
             } else {
                 for ch in data.chars() {
-                    self.command_bar.handle_edit_command(command::Edit::Insert(ch));
+                    self.command_bar
+                        .handle_edit_command(command::Edit::Insert(ch));
                 }
             }
             return;
@@ -179,10 +180,17 @@ impl Editor {
                 let query = self.command_bar.value();
                 self.view.search(&query);
             }
-            Move(move_cmd) if matches!(move_cmd.direction, MoveDirection::Right | MoveDirection::Down) => {
+            Move(move_cmd)
+                if matches!(
+                    move_cmd.direction,
+                    MoveDirection::Right | MoveDirection::Down
+                ) =>
+            {
                 self.view.search_next();
             }
-            Move(move_cmd) if matches!(move_cmd.direction, MoveDirection::Up | MoveDirection::Left) => {
+            Move(move_cmd)
+                if matches!(move_cmd.direction, MoveDirection::Up | MoveDirection::Left) =>
+            {
                 self.view.search_prev();
             }
             System(Quit | Resize(_) | Search | Save) | Move(_) => {}
