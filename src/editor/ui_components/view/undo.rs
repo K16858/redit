@@ -13,6 +13,7 @@ pub struct UndoHistory {
 }
 
 impl UndoHistory {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self::default()
     }
