@@ -19,10 +19,26 @@ pub struct AdapterConfig {
     pub dap_transport: String,
     #[serde(default)]
     pub session_cwd_template: String,
+    #[serde(default)]
+    pub health_check_command: String,
     #[serde(default = "default_health_check_args")]
     pub health_check_args: Vec<String>,
+    #[serde(default)]
+    pub health_check_fallback_command: String,
+    #[serde(default)]
+    pub health_check_fallback_args: Vec<String>,
+    #[serde(default)]
+    pub not_found_hint: String,
     #[serde(default = "default_client_addr_arg")]
     pub client_addr_arg: String,
+    #[serde(default)]
+    pub auto_continue_stop_reasons: Vec<String>,
+    #[serde(default)]
+    pub sync_breakpoints_before_auto_continue: bool,
+    #[serde(default)]
+    pub stacktrace_continue_error_patterns: Vec<String>,
+    #[serde(default)]
+    pub stacktrace_retry_error_patterns: Vec<String>,
     #[serde(default)]
     pub launch_template: Value,
     #[serde(default)]
@@ -106,11 +122,37 @@ fn merge_missing_fields_from_default(current: &mut AdapterConfig, default_cfg: &
     if current.session_cwd_template.is_empty() {
         current.session_cwd_template = default_cfg.session_cwd_template.clone();
     }
+    if current.health_check_command.is_empty() {
+        current.health_check_command = default_cfg.health_check_command.clone();
+    }
     if current.health_check_args == default_health_check_args() && !default_cfg.health_check_args.is_empty() {
         current.health_check_args = default_cfg.health_check_args.clone();
     }
+    if current.health_check_fallback_command.is_empty() {
+        current.health_check_fallback_command = default_cfg.health_check_fallback_command.clone();
+    }
+    if current.health_check_fallback_args.is_empty() {
+        current.health_check_fallback_args = default_cfg.health_check_fallback_args.clone();
+    }
+    if current.not_found_hint.is_empty() {
+        current.not_found_hint = default_cfg.not_found_hint.clone();
+    }
     if current.client_addr_arg == default_client_addr_arg() && !default_cfg.client_addr_arg.is_empty() {
         current.client_addr_arg = default_cfg.client_addr_arg.clone();
+    }
+    if current.auto_continue_stop_reasons.is_empty() {
+        current.auto_continue_stop_reasons = default_cfg.auto_continue_stop_reasons.clone();
+    }
+    if !current.sync_breakpoints_before_auto_continue {
+        current.sync_breakpoints_before_auto_continue = default_cfg.sync_breakpoints_before_auto_continue;
+    }
+    if current.stacktrace_continue_error_patterns.is_empty() {
+        current.stacktrace_continue_error_patterns =
+            default_cfg.stacktrace_continue_error_patterns.clone();
+    }
+    if current.stacktrace_retry_error_patterns.is_empty() {
+        current.stacktrace_retry_error_patterns =
+            default_cfg.stacktrace_retry_error_patterns.clone();
     }
     if current.launch_template.is_null() {
         current.launch_template = default_cfg.launch_template.clone();

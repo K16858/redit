@@ -707,16 +707,18 @@ impl Editor {
                                 .get("reason")
                                 .and_then(serde_json::Value::as_str)
                                 .unwrap_or("");
-                            let is_dlv = self.active_debug_adapter.as_ref().is_some_and(|a| {
-                                a.dap_adapter_type.eq_ignore_ascii_case("dlv-dap")
-                            });
-                            if is_dlv && reason == "entry" {
-                                // Delve is paused at entry; re-sync breakpoints now and continue.
+                            if self.should_auto_continue_for_stop_reason(reason) {
                                 self.pending_continue_after_entry = false;
-                                self.sync_all_breakpoints();
-                                self.update_message(
-                                    "Delve entry stop -> breakpoints synced, continuing...",
-                                );
+                                if self
+                                    .active_debug_adapter
+                                    .as_ref()
+                                    .is_some_and(|a| a.sync_breakpoints_before_auto_continue)
+                                {
+                                    self.sync_all_breakpoints();
+                                }
+                                self.update_message(&format!(
+                                    "Auto-continuing after stop reason '{reason}'."
+                                ));
                                 self.continue_debug();
                                 continue;
                             }
@@ -756,7 +758,7 @@ impl Editor {
                             }
                             self.handle_debug_response(&command, &body);
                             if command == "launch" {
-                                // dlv-dap may not emit `initialized`; fallback here.
+                                // Some adapters may not emit `initialized`; fallback here.
                                 self.send_configuration_done_if_pending();
                                 if let Some(adapter) = &self.active_debug_adapter {
                                     self.update_message(&format!(
@@ -770,20 +772,17 @@ impl Editor {
                         } else {
                             let detail = Self::dap_error_detail(&message, &body);
                             if command == "stackTrace"
-                                && detail.contains("unknown goroutine 1")
-                                && self.active_debug_adapter.as_ref().is_some_and(|a| {
-                                    a.dap_adapter_type.eq_ignore_ascii_case("dlv-dap")
-                                })
+                                && self.should_continue_after_stacktrace_error(&detail)
                             {
                                 self.update_message(
-                                    "Delve entry stop produced invalid goroutine. Continuing...",
+                                    "Adapter stackTrace error matched auto-continue pattern.",
                                 );
                                 self.continue_debug();
                                 continue;
                             }
                             if command == "stackTrace"
-                                && detail.contains("unknown goroutine")
-                                && self.try_retry_stacktrace_for_dlv()
+                                && self.should_retry_stacktrace_after_error(&detail)
+                                && self.try_retry_stacktrace_for_adapter()
                             {
                                 continue;
                             }
@@ -1157,12 +1156,46 @@ impl Editor {
         body.to_string()
     }
 
-    fn try_retry_stacktrace_for_dlv(&mut self) -> bool {
-        let is_dlv = self
-            .active_debug_adapter
+    fn matches_error_patterns(detail: &str, patterns: &[String]) -> bool {
+        if patterns.is_empty() {
+            return false;
+        }
+        let detail_lower = detail.to_ascii_lowercase();
+        patterns
+            .iter()
+            .filter(|p| !p.is_empty())
+            .any(|p| detail_lower.contains(&p.to_ascii_lowercase()))
+    }
+
+    fn should_auto_continue_for_stop_reason(&self, reason: &str) -> bool {
+        self.active_debug_adapter
             .as_ref()
-            .is_some_and(|a| a.dap_adapter_type.eq_ignore_ascii_case("dlv-dap"));
-        if !is_dlv || self.stacktrace_retry_attempted {
+            .is_some_and(|adapter| {
+                adapter
+                    .auto_continue_stop_reasons
+                    .iter()
+                    .any(|r| r.eq_ignore_ascii_case(reason))
+            })
+    }
+
+    fn should_continue_after_stacktrace_error(&self, detail: &str) -> bool {
+        self.active_debug_adapter
+            .as_ref()
+            .is_some_and(|adapter| {
+                Self::matches_error_patterns(detail, &adapter.stacktrace_continue_error_patterns)
+            })
+    }
+
+    fn should_retry_stacktrace_after_error(&self, detail: &str) -> bool {
+        self.active_debug_adapter
+            .as_ref()
+            .is_some_and(|adapter| {
+                Self::matches_error_patterns(detail, &adapter.stacktrace_retry_error_patterns)
+            })
+    }
+
+    fn try_retry_stacktrace_for_adapter(&mut self) -> bool {
+        if self.stacktrace_retry_attempted {
             return false;
         }
         let current = self.debug_state.current_thread_id.unwrap_or(0);
@@ -1184,7 +1217,7 @@ impl Editor {
         self.stacktrace_retry_attempted = true;
         self.debug_state.current_thread_id = Some(next_id);
         self.request_stack_trace();
-        self.update_message(&format!("Retrying stackTrace with goroutine {next_id}..."));
+        self.update_message(&format!("Retrying stackTrace with thread {next_id}..."));
         true
     }
 
@@ -1235,7 +1268,7 @@ impl Editor {
             .and_then(|s| s.to_str())
             .unwrap_or_default()
             .to_string();
-        let go_launch_dir = Self::resolve_go_launch_dir(file_path, workspace);
+        let module_root = Self::resolve_go_launch_dir(file_path, workspace);
         let target_debug_binary = if cfg!(windows) {
             workspace
                 .join("target")
@@ -1250,7 +1283,9 @@ impl Editor {
             ("${workspace}", workspace.to_string_lossy().to_string()),
             ("${file}", file_path.to_string_lossy().to_string()),
             ("${fileStem}", file_stem),
-            ("${goLaunchDir}", go_launch_dir.to_string_lossy().to_string()),
+            ("${moduleRoot}", module_root.to_string_lossy().to_string()),
+            // Backward-compatible alias; prefer ${moduleRoot} in new configs.
+            ("${goLaunchDir}", module_root.to_string_lossy().to_string()),
             (
                 "${targetDebugBinary}",
                 target_debug_binary.to_string_lossy().to_string(),
@@ -1315,58 +1350,45 @@ impl Editor {
     }
 
     fn ensure_adapter_ready(adapter: &AdapterConfig) -> Result<(), String> {
-        if adapter.dap_adapter_type.eq_ignore_ascii_case("debugpy") {
-            let python_ok = ProcessCommand::new("python")
-                .args(["-c", "import debugpy.adapter"])
-                .stdin(Stdio::null())
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status()
-                .is_ok_and(|status| status.success());
-            if python_ok {
-                return Ok(());
-            }
-
-            let py_launcher_ok = ProcessCommand::new("py")
-                .args(["-3", "-c", "import debugpy.adapter"])
-                .stdin(Stdio::null())
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status()
-                .is_ok_and(|status| status.success());
-            if py_launcher_ok {
-                return Ok(());
-            }
-
-            Err("Python/debugpy not found. Install: python -m pip install debugpy (or py -3 -m pip install debugpy)".to_string())
+        let probe_command = if adapter.health_check_command.is_empty() {
+            adapter.command.clone()
         } else {
-            let mut cmd = ProcessCommand::new(&adapter.command);
-            cmd.args(&adapter.health_check_args);
-            match cmd
+            adapter.health_check_command.clone()
+        };
+        let run_probe = |command: &str, args: &[String]| {
+            ProcessCommand::new(command)
+                .args(args)
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .status()
-            {
-                Ok(_) => Ok(()),
-                Err(e) => {
-                    if e.kind() == std::io::ErrorKind::NotFound {
-                        if adapter.dap_adapter_type.eq_ignore_ascii_case("codelldb") {
-                            Err("Rust debug adapter 'codelldb' is missing. Install VS Code CodeLLDB extension or add codelldb to PATH.".to_string())
-                        } else if adapter.dap_adapter_type.eq_ignore_ascii_case("dlv-dap") {
-                            Err("Go debug adapter 'dlv' is missing. Install: go install github.com/go-delve/delve/cmd/dlv@latest and add GOPATH/bin to PATH.".to_string())
-                        } else {
-                            Err(format!(
-                                "Debug adapter command not found: {}. Install it and add to PATH.",
-                                adapter.command
-                            ))
-                        }
-                    } else {
-                        Err(format!(
-                            "Failed to execute debug adapter '{}': {e}",
-                            adapter.command
-                        ))
+        };
+
+        match run_probe(&probe_command, &adapter.health_check_args) {
+            Ok(_) => Ok(()),
+            Err(primary_err) => {
+                if !adapter.health_check_fallback_command.is_empty()
+                    && run_probe(
+                        &adapter.health_check_fallback_command,
+                        &adapter.health_check_fallback_args,
+                    )
+                    .is_ok()
+                {
+                    return Ok(());
+                }
+                if primary_err.kind() == std::io::ErrorKind::NotFound {
+                    if !adapter.not_found_hint.is_empty() {
+                        return Err(adapter.not_found_hint.clone());
                     }
+                    Err(format!(
+                        "Debug adapter command not found: {}. Install it and add to PATH.",
+                        probe_command
+                    ))
+                } else {
+                    Err(format!(
+                        "Failed to execute debug adapter '{}': {primary_err}",
+                        probe_command
+                    ))
                 }
             }
         }

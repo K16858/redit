@@ -21,14 +21,31 @@ dap_transport = ""
 # Used only when dap_transport = "tcp-server-dials-client"
 client_addr_arg = "--client-addr"
 
+# Optional health check command (defaults to `command` when empty).
+health_check_command = ""
+
 # Optional process health check command args.
 # Example: ["--version"] or ["version"]
 health_check_args = ["--version"]
 
+# Optional fallback health check command/args when primary probe fails.
+health_check_fallback_command = ""
+health_check_fallback_args = []
+
+# Optional user-facing install hint when command is not found.
+not_found_hint = ""
+
 # Optional session current directory template.
 # Available placeholders:
-# ${workspace} ${file} ${fileStem} ${goLaunchDir} ${targetDebugBinary} ${tmpDir} ${pid}
+# ${workspace} ${file} ${fileStem} ${moduleRoot} ${targetDebugBinary} ${tmpDir} ${pid}
+# Legacy alias (still supported): ${goLaunchDir}
 session_cwd_template = ""
+
+# Optional stop/error behaviors for adapters with special runtime quirks.
+auto_continue_stop_reasons = []
+sync_breakpoints_before_auto_continue = false
+stacktrace_continue_error_patterns = []
+stacktrace_retry_error_patterns = []
 
 # Optional base launch payload (merged into default launch args).
 launch_template = {
