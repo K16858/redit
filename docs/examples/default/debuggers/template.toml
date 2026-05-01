@@ -1,0 +1,45 @@
+# Copy this file to:
+# - Windows: %APPDATA%/den/debuggers/<name>.toml
+# - Linux/macOS: ~/.config/den/debuggers/<name>.toml
+#
+# Then edit values for your adapter.
+
+id = "my-adapter"
+display_name = "My Adapter"
+command = "my-dap-adapter"
+args = []
+file_extensions = ["txt"]
+
+# DAP "type" used in initialize.adapterID and launch.type by default.
+dap_adapter_type = "my-adapter"
+
+# Optional transport mode:
+# - "" (default): stdio
+# - "tcp-server-dials-client": adapter connects to the client address we provide
+dap_transport = ""
+
+# Used only when dap_transport = "tcp-server-dials-client"
+client_addr_arg = "--client-addr"
+
+# Optional process health check command args.
+# Example: ["--version"] or ["version"]
+health_check_args = ["--version"]
+
+# Optional session current directory template.
+# Available placeholders:
+# ${workspace} ${file} ${fileStem} ${goLaunchDir} ${targetDebugBinary} ${tmpDir} ${pid}
+session_cwd_template = ""
+
+# Optional base launch payload (merged into default launch args).
+launch_template = {
+  name = "Debug (My Adapter)",
+  type = "my-adapter",
+  request = "launch",
+  program = "${file}",
+  cwd = "${workspace}"
+}
+
+# Optional final overrides (applied last).
+launch_overrides = {
+  # exampleFlag = true
+}
