@@ -1310,10 +1310,13 @@ impl Editor {
                 "stopOnEntry": true
             })
         } else {
-            return Err(format!(
-                "Unsupported adapter type for launch: {}",
-                adapter.dap_adapter_type
-            ));
+            json!({
+                "name": format!("Debug ({})", adapter.display_name),
+                "type": adapter.dap_adapter_type,
+                "request": "launch",
+                "program": file_path,
+                "cwd": workspace
+            })
         };
         let mut overrides = adapter.launch_overrides.clone();
         Self::expand_launch_templates(&mut overrides);
