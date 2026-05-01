@@ -4,4 +4,9 @@ command = "dlv"
 args = ["dap"]
 file_extensions = ["go"]
 dap_adapter_type = "dlv-dap"
+dap_transport = "tcp-server-dials-client"
+client_addr_arg = "--client-addr"
+session_cwd_template = "${goLaunchDir}"
+health_check_args = ["version"]
+launch_template = { name = "Debug current Go package", type = "go", mode = "debug", program = ".", cwd = "${goLaunchDir}", stopOnEntry = true }
 launch_overrides = { output = "${tmpDir}/den_dlv_${pid}.exe" }

@@ -598,16 +598,15 @@ impl Editor {
             self.update_message(&msg);
             return;
         }
-        let debug_cwd = if adapter.dap_adapter_type.eq_ignore_ascii_case("dlv-dap") {
-            let file_path = self.view.file_path();
-            Some(
-                file_path
-                    .as_deref()
-                    .map(|p| Self::resolve_go_launch_dir(p, self.sidebar.workspace_root()))
-                    .unwrap_or_else(|| self.sidebar.workspace_root().to_path_buf()),
-            )
-        } else {
+        let debug_cwd = if adapter.session_cwd_template.is_empty() {
             None
+        } else {
+            self.view.file_path().map(|path| {
+                let placeholders = Self::build_debug_placeholders(&path, self.sidebar.workspace_root());
+                let mut template = Value::String(adapter.session_cwd_template.clone());
+                Self::expand_launch_templates(&mut template, &placeholders);
+                PathBuf::from(template.as_str().unwrap_or_default())
+            })
         };
 
         match DapSession::start(&adapter, debug_cwd.as_deref()) {
@@ -1230,22 +1229,52 @@ impl Editor {
             .unwrap_or_else(|| workspace.to_path_buf())
     }
 
-    fn expand_launch_templates(value: &mut Value) {
+    fn build_debug_placeholders(file_path: &Path, workspace: &Path) -> HashMap<&'static str, String> {
+        let file_stem = file_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default()
+            .to_string();
+        let go_launch_dir = Self::resolve_go_launch_dir(file_path, workspace);
+        let target_debug_binary = if cfg!(windows) {
+            workspace
+                .join("target")
+                .join("debug")
+                .join(format!("{file_stem}.exe"))
+        } else {
+            workspace.join("target").join("debug").join(&file_stem)
+        };
+        HashMap::from([
+            ("${tmpDir}", env::temp_dir().to_string_lossy().to_string()),
+            ("${pid}", std::process::id().to_string()),
+            ("${workspace}", workspace.to_string_lossy().to_string()),
+            ("${file}", file_path.to_string_lossy().to_string()),
+            ("${fileStem}", file_stem),
+            ("${goLaunchDir}", go_launch_dir.to_string_lossy().to_string()),
+            (
+                "${targetDebugBinary}",
+                target_debug_binary.to_string_lossy().to_string(),
+            ),
+        ])
+    }
+
+    fn expand_launch_templates(value: &mut Value, placeholders: &HashMap<&str, String>) {
         match value {
             Value::String(s) => {
-                let expanded = s
-                    .replace("${tmpDir}", &env::temp_dir().to_string_lossy())
-                    .replace("${pid}", &std::process::id().to_string());
+                let mut expanded = s.clone();
+                for (key, value) in placeholders {
+                    expanded = expanded.replace(key, value);
+                }
                 *s = expanded;
             }
             Value::Array(arr) => {
                 for item in arr {
-                    Self::expand_launch_templates(item);
+                    Self::expand_launch_templates(item, placeholders);
                 }
             }
             Value::Object(map) => {
                 for item in map.values_mut() {
-                    Self::expand_launch_templates(item);
+                    Self::expand_launch_templates(item, placeholders);
                 }
             }
             Value::Null | Value::Bool(_) | Value::Number(_) => {}
@@ -1268,58 +1297,19 @@ impl Editor {
             .file_path()
             .ok_or_else(|| "Open a file before starting debug.".to_string())?;
         let workspace = self.sidebar.workspace_root().to_path_buf();
-
-        let mut args = if adapter.dap_adapter_type.eq_ignore_ascii_case("debugpy") {
-            json!({
-                "name": "Debug current file",
-                "type": "python",
-                "request": "launch",
-                "program": file_path,
-                "cwd": workspace
-            })
-        } else if adapter.dap_adapter_type.eq_ignore_ascii_case("codelldb") {
-            let stem = file_path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .ok_or_else(|| "Could not resolve binary name from file.".to_string())?;
-            let exe = if cfg!(windows) {
-                workspace
-                    .join("target")
-                    .join("debug")
-                    .join(format!("{stem}.exe"))
-            } else {
-                workspace.join("target").join("debug").join(stem)
-            };
-            json!({
-                "name": "Debug current binary",
-                "type": "lldb",
-                "request": "launch",
-                "program": exe,
-                "cwd": workspace
-            })
-        } else if adapter.dap_adapter_type.eq_ignore_ascii_case("dlv-dap") {
-            let launch_dir = Self::resolve_go_launch_dir(&file_path, &workspace);
-            json!({
-                "name": "Debug current Go package",
-                "type": "go",
-                "request": "launch",
-                "mode": "debug",
-                // `dlv dap` on Windows is more reliable with program="." + cwd=<package dir>.
-                "program": ".",
-                "cwd": launch_dir,
-                "stopOnEntry": true
-            })
-        } else {
-            json!({
-                "name": format!("Debug ({})", adapter.display_name),
-                "type": adapter.dap_adapter_type,
-                "request": "launch",
-                "program": file_path,
-                "cwd": workspace
-            })
-        };
+        let mut args = json!({
+            "name": format!("Debug ({})", adapter.display_name),
+            "type": adapter.dap_adapter_type,
+            "request": "launch",
+            "program": file_path,
+            "cwd": workspace
+        });
+        let mut launch_template = adapter.launch_template.clone();
         let mut overrides = adapter.launch_overrides.clone();
-        Self::expand_launch_templates(&mut overrides);
+        let placeholders = Self::build_debug_placeholders(&file_path, &workspace);
+        Self::expand_launch_templates(&mut launch_template, &placeholders);
+        Self::expand_launch_templates(&mut overrides, &placeholders);
+        Self::merge_launch_overrides(&mut args, &launch_template);
         Self::merge_launch_overrides(&mut args, &overrides);
         Ok(args)
     }
@@ -1351,11 +1341,7 @@ impl Editor {
             Err("Python/debugpy not found. Install: python -m pip install debugpy (or py -3 -m pip install debugpy)".to_string())
         } else {
             let mut cmd = ProcessCommand::new(&adapter.command);
-            if adapter.dap_adapter_type.eq_ignore_ascii_case("dlv-dap") {
-                cmd.arg("version");
-            } else {
-                cmd.arg("--version");
-            }
+            cmd.args(&adapter.health_check_args);
             match cmd
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())

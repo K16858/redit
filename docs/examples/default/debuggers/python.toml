@@ -4,4 +4,5 @@ command = "python"
 args = ["-m", "debugpy.adapter"]
 file_extensions = ["py"]
 dap_adapter_type = "debugpy"
+launch_template = { name = "Debug current file", type = "python" }
 launch_overrides = { justMyCode = false }

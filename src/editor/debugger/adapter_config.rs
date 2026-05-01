@@ -16,7 +16,25 @@ pub struct AdapterConfig {
     #[serde(default)]
     pub dap_adapter_type: String,
     #[serde(default)]
+    pub dap_transport: String,
+    #[serde(default)]
+    pub session_cwd_template: String,
+    #[serde(default = "default_health_check_args")]
+    pub health_check_args: Vec<String>,
+    #[serde(default = "default_client_addr_arg")]
+    pub client_addr_arg: String,
+    #[serde(default)]
+    pub launch_template: Value,
+    #[serde(default)]
     pub launch_overrides: Value,
+}
+
+fn default_health_check_args() -> Vec<String> {
+    vec!["--version".to_string()]
+}
+
+fn default_client_addr_arg() -> String {
+    "--client-addr".to_string()
 }
 
 #[derive(Debug)]
@@ -56,10 +74,46 @@ fn load_from_dir(dir: &Path, map: &mut HashMap<String, AdapterConfig>, is_defaul
             continue;
         };
 
-        if is_default && map.contains_key(&cfg.id) {
+        if is_default
+            && let Some(existing) = map.get_mut(&cfg.id)
+        {
+            merge_missing_fields_from_default(existing, &cfg);
             continue;
         }
         map.insert(cfg.id.clone(), cfg);
+    }
+}
+
+fn merge_missing_fields_from_default(current: &mut AdapterConfig, default_cfg: &AdapterConfig) {
+    if current.display_name.is_empty() {
+        current.display_name = default_cfg.display_name.clone();
+    }
+    if current.command.is_empty() {
+        current.command = default_cfg.command.clone();
+    }
+    if current.args.is_empty() {
+        current.args = default_cfg.args.clone();
+    }
+    if current.file_extensions.is_empty() {
+        current.file_extensions = default_cfg.file_extensions.clone();
+    }
+    if current.dap_adapter_type.is_empty() {
+        current.dap_adapter_type = default_cfg.dap_adapter_type.clone();
+    }
+    if current.dap_transport.is_empty() {
+        current.dap_transport = default_cfg.dap_transport.clone();
+    }
+    if current.session_cwd_template.is_empty() {
+        current.session_cwd_template = default_cfg.session_cwd_template.clone();
+    }
+    if current.health_check_args == default_health_check_args() && !default_cfg.health_check_args.is_empty() {
+        current.health_check_args = default_cfg.health_check_args.clone();
+    }
+    if current.client_addr_arg == default_client_addr_arg() && !default_cfg.client_addr_arg.is_empty() {
+        current.client_addr_arg = default_cfg.client_addr_arg.clone();
+    }
+    if current.launch_template.is_null() {
+        current.launch_template = default_cfg.launch_template.clone();
     }
 }
 
