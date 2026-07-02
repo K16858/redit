@@ -16,7 +16,54 @@ pub struct AdapterConfig {
     #[serde(default)]
     pub dap_adapter_type: String,
     #[serde(default)]
+    pub dap_transport: String,
+    #[serde(default)]
+    pub session_cwd_template: String,
+    #[serde(default)]
+    pub health_check_command: String,
+    #[serde(default = "default_health_check_args")]
+    pub health_check_args: Vec<String>,
+    #[serde(default)]
+    pub health_check_fallback_command: String,
+    #[serde(default)]
+    pub health_check_fallback_args: Vec<String>,
+    #[serde(default)]
+    pub not_found_hint: String,
+    /// `None` means "not set in this file" (falls back to the default adapter's
+    /// value, or `DEFAULT_CLIENT_ADDR_ARG` if there is none). Kept as `Option`
+    /// rather than a sentinel string so an explicit override can't be confused
+    /// with "unset" during default-merging.
+    #[serde(default)]
+    pub client_addr_arg: Option<String>,
+    #[serde(default)]
+    pub auto_continue_stop_reasons: Vec<String>,
+    /// `None` means "not set in this file"; see `client_addr_arg` doc comment.
+    #[serde(default)]
+    pub sync_breakpoints_before_auto_continue: Option<bool>,
+    #[serde(default)]
+    pub stacktrace_continue_error_patterns: Vec<String>,
+    #[serde(default)]
+    pub stacktrace_retry_error_patterns: Vec<String>,
+    #[serde(default)]
+    pub launch_template: Value,
+    #[serde(default)]
     pub launch_overrides: Value,
+}
+
+const DEFAULT_CLIENT_ADDR_ARG: &str = "--client-addr";
+
+fn default_health_check_args() -> Vec<String> {
+    vec!["--version".to_string()]
+}
+
+impl AdapterConfig {
+    pub fn client_addr_arg(&self) -> &str {
+        self.client_addr_arg.as_deref().unwrap_or(DEFAULT_CLIENT_ADDR_ARG)
+    }
+
+    pub fn sync_breakpoints_before_auto_continue(&self) -> bool {
+        self.sync_breakpoints_before_auto_continue.unwrap_or(false)
+    }
 }
 
 #[derive(Debug)]
@@ -56,10 +103,75 @@ fn load_from_dir(dir: &Path, map: &mut HashMap<String, AdapterConfig>, is_defaul
             continue;
         };
 
-        if is_default && map.contains_key(&cfg.id) {
+        if is_default
+            && let Some(existing) = map.get_mut(&cfg.id)
+        {
+            merge_missing_fields_from_default(existing, &cfg);
             continue;
         }
         map.insert(cfg.id.clone(), cfg);
+    }
+}
+
+fn merge_missing_fields_from_default(current: &mut AdapterConfig, default_cfg: &AdapterConfig) {
+    if current.display_name.is_empty() {
+        current.display_name = default_cfg.display_name.clone();
+    }
+    if current.command.is_empty() {
+        current.command = default_cfg.command.clone();
+    }
+    if current.args.is_empty() {
+        current.args = default_cfg.args.clone();
+    }
+    if current.file_extensions.is_empty() {
+        current.file_extensions = default_cfg.file_extensions.clone();
+    }
+    if current.dap_adapter_type.is_empty() {
+        current.dap_adapter_type = default_cfg.dap_adapter_type.clone();
+    }
+    if current.dap_transport.is_empty() {
+        current.dap_transport = default_cfg.dap_transport.clone();
+    }
+    if current.session_cwd_template.is_empty() {
+        current.session_cwd_template = default_cfg.session_cwd_template.clone();
+    }
+    if current.health_check_command.is_empty() {
+        current.health_check_command = default_cfg.health_check_command.clone();
+    }
+    if current.health_check_args == default_health_check_args() && !default_cfg.health_check_args.is_empty() {
+        current.health_check_args = default_cfg.health_check_args.clone();
+    }
+    if current.health_check_fallback_command.is_empty() {
+        current.health_check_fallback_command = default_cfg.health_check_fallback_command.clone();
+    }
+    if current.health_check_fallback_args.is_empty() {
+        current.health_check_fallback_args = default_cfg.health_check_fallback_args.clone();
+    }
+    if current.not_found_hint.is_empty() {
+        current.not_found_hint = default_cfg.not_found_hint.clone();
+    }
+    if current.client_addr_arg.is_none() {
+        current.client_addr_arg = default_cfg.client_addr_arg.clone();
+    }
+    if current.auto_continue_stop_reasons.is_empty() {
+        current.auto_continue_stop_reasons = default_cfg.auto_continue_stop_reasons.clone();
+    }
+    if current.sync_breakpoints_before_auto_continue.is_none() {
+        current.sync_breakpoints_before_auto_continue = default_cfg.sync_breakpoints_before_auto_continue;
+    }
+    if current.stacktrace_continue_error_patterns.is_empty() {
+        current.stacktrace_continue_error_patterns =
+            default_cfg.stacktrace_continue_error_patterns.clone();
+    }
+    if current.stacktrace_retry_error_patterns.is_empty() {
+        current.stacktrace_retry_error_patterns =
+            default_cfg.stacktrace_retry_error_patterns.clone();
+    }
+    if current.launch_template.is_null() {
+        current.launch_template = default_cfg.launch_template.clone();
+    }
+    if current.launch_overrides.is_null() {
+        current.launch_overrides = default_cfg.launch_overrides.clone();
     }
 }
 
