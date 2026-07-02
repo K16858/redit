@@ -712,7 +712,7 @@ impl Editor {
                                 if self
                                     .active_debug_adapter
                                     .as_ref()
-                                    .is_some_and(|a| a.sync_breakpoints_before_auto_continue)
+                                    .is_some_and(AdapterConfig::sync_breakpoints_before_auto_continue)
                                 {
                                     self.sync_all_breakpoints();
                                 }

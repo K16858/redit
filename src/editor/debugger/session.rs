@@ -40,7 +40,7 @@ impl DapSession {
                 let mut command = Command::new(&adapter.command);
                 command
                     .args(&adapter.args)
-                    .arg(&adapter.client_addr_arg)
+                    .arg(adapter.client_addr_arg())
                     .arg(addr.to_string())
                     .stdin(Stdio::null())
                     .stdout(Stdio::null())

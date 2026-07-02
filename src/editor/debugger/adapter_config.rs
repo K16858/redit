@@ -29,12 +29,17 @@ pub struct AdapterConfig {
     pub health_check_fallback_args: Vec<String>,
     #[serde(default)]
     pub not_found_hint: String,
-    #[serde(default = "default_client_addr_arg")]
-    pub client_addr_arg: String,
+    /// `None` means "not set in this file" (falls back to the default adapter's
+    /// value, or `DEFAULT_CLIENT_ADDR_ARG` if there is none). Kept as `Option`
+    /// rather than a sentinel string so an explicit override can't be confused
+    /// with "unset" during default-merging.
+    #[serde(default)]
+    pub client_addr_arg: Option<String>,
     #[serde(default)]
     pub auto_continue_stop_reasons: Vec<String>,
+    /// `None` means "not set in this file"; see `client_addr_arg` doc comment.
     #[serde(default)]
-    pub sync_breakpoints_before_auto_continue: bool,
+    pub sync_breakpoints_before_auto_continue: Option<bool>,
     #[serde(default)]
     pub stacktrace_continue_error_patterns: Vec<String>,
     #[serde(default)]
@@ -45,12 +50,20 @@ pub struct AdapterConfig {
     pub launch_overrides: Value,
 }
 
+const DEFAULT_CLIENT_ADDR_ARG: &str = "--client-addr";
+
 fn default_health_check_args() -> Vec<String> {
     vec!["--version".to_string()]
 }
 
-fn default_client_addr_arg() -> String {
-    "--client-addr".to_string()
+impl AdapterConfig {
+    pub fn client_addr_arg(&self) -> &str {
+        self.client_addr_arg.as_deref().unwrap_or(DEFAULT_CLIENT_ADDR_ARG)
+    }
+
+    pub fn sync_breakpoints_before_auto_continue(&self) -> bool {
+        self.sync_breakpoints_before_auto_continue.unwrap_or(false)
+    }
 }
 
 #[derive(Debug)]
@@ -137,13 +150,13 @@ fn merge_missing_fields_from_default(current: &mut AdapterConfig, default_cfg: &
     if current.not_found_hint.is_empty() {
         current.not_found_hint = default_cfg.not_found_hint.clone();
     }
-    if current.client_addr_arg == default_client_addr_arg() && !default_cfg.client_addr_arg.is_empty() {
+    if current.client_addr_arg.is_none() {
         current.client_addr_arg = default_cfg.client_addr_arg.clone();
     }
     if current.auto_continue_stop_reasons.is_empty() {
         current.auto_continue_stop_reasons = default_cfg.auto_continue_stop_reasons.clone();
     }
-    if !current.sync_breakpoints_before_auto_continue {
+    if current.sync_breakpoints_before_auto_continue.is_none() {
         current.sync_breakpoints_before_auto_continue = default_cfg.sync_breakpoints_before_auto_continue;
     }
     if current.stacktrace_continue_error_patterns.is_empty() {

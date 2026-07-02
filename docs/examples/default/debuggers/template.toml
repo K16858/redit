@@ -18,7 +18,9 @@ dap_adapter_type = "my-adapter"
 # - "tcp-server-dials-client": adapter connects to the client address we provide
 dap_transport = ""
 
-# Used only when dap_transport = "tcp-server-dials-client"
+# Used only when dap_transport = "tcp-server-dials-client".
+# Omit this line (rather than repeating the default) to inherit the value
+# from a same-id default config; an explicit value here always wins.
 client_addr_arg = "--client-addr"
 
 # Optional health check command (defaults to `command` when empty).
@@ -43,6 +45,8 @@ session_cwd_template = ""
 
 # Optional stop/error behaviors for adapters with special runtime quirks.
 auto_continue_stop_reasons = []
+# Omit this line to inherit from a same-id default config; an explicit
+# `false` here always wins and is not treated as "unset".
 sync_breakpoints_before_auto_continue = false
 stacktrace_continue_error_patterns = []
 stacktrace_retry_error_patterns = []
