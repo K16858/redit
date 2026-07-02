@@ -157,6 +157,9 @@ fn merge_missing_fields_from_default(current: &mut AdapterConfig, default_cfg: &
     if current.launch_template.is_null() {
         current.launch_template = default_cfg.launch_template.clone();
     }
+    if current.launch_overrides.is_null() {
+        current.launch_overrides = default_cfg.launch_overrides.clone();
+    }
 }
 
 pub fn load_adapter_config(path: &Path) -> Result<AdapterConfig, AdapterConfigError> {
