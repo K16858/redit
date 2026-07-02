@@ -1364,33 +1364,35 @@ impl Editor {
                 .status()
         };
 
-        match run_probe(&probe_command, &adapter.health_check_args) {
-            Ok(_) => Ok(()),
-            Err(primary_err) => {
-                if !adapter.health_check_fallback_command.is_empty()
-                    && run_probe(
-                        &adapter.health_check_fallback_command,
-                        &adapter.health_check_fallback_args,
-                    )
-                    .is_ok()
-                {
-                    return Ok(());
-                }
-                if primary_err.kind() == std::io::ErrorKind::NotFound {
-                    if !adapter.not_found_hint.is_empty() {
-                        return Err(adapter.not_found_hint.clone());
-                    }
-                    Err(format!(
-                        "Debug adapter command not found: {}. Install it and add to PATH.",
-                        probe_command
-                    ))
+        let primary_result = run_probe(&probe_command, &adapter.health_check_args);
+        if matches!(&primary_result, Ok(status) if status.success()) {
+            return Ok(());
+        }
+
+        if !adapter.health_check_fallback_command.is_empty()
+            && run_probe(
+                &adapter.health_check_fallback_command,
+                &adapter.health_check_fallback_args,
+            )
+            .is_ok_and(|status| status.success())
+        {
+            return Ok(());
+        }
+
+        match primary_result {
+            Ok(status) => Err(format!(
+                "Debug adapter health check failed for '{probe_command}' ({status})."
+            )),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                if !adapter.not_found_hint.is_empty() {
+                    Err(adapter.not_found_hint.clone())
                 } else {
                     Err(format!(
-                        "Failed to execute debug adapter '{}': {primary_err}",
-                        probe_command
+                        "Debug adapter command not found: {probe_command}. Install it and add to PATH."
                     ))
                 }
             }
+            Err(e) => Err(format!("Failed to execute debug adapter '{probe_command}': {e}")),
         }
     }
 
